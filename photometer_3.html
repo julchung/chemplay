@@ -478,7 +478,6 @@
     </div>
 </div>
 
-<!-- Removed bottom log -->
 
 <!-- No Chart.js dependency needed -->
 
@@ -488,6 +487,16 @@
      * We use a direct call pattern at the bottom to avoid missing DOMContentLoaded.
      */
     
+    // --- Logging Utility ---
+    function vlog(msg) {
+        console.log('[PhotometerApp] ' + msg);
+        // Optional: Show in a small status area if we had one
+    }
+
+    // Check for Secure Context early
+    if (window.isSecureContext === false) {
+        alert("警告：此網頁未在安全環境（HTTPS 或 localhost）中執行。瀏覽器可能會禁止開啟相機。");
+    }
 
     // --- State Management ---
     const state = {
@@ -508,12 +517,24 @@
     let inInterval, btnTimeStart, timePointsCount;
 
     function bindDOMElements() {
+        vlog("Binding DOM elements...");
+        
         cameraCanvas = document.getElementById('cameraCanvas');
         if (cameraCanvas) {
             cameraCtx = cameraCanvas.getContext('2d', { alpha: false });
+            vlog("Camera canvas found and context created");
+        } else {
+            vlog("ERROR: cameraCanvas not found!");
         }
+        
         cameraSelect = document.getElementById('cameraSelect');
         btnCamera = document.getElementById('btnCamera');
+        
+        if (btnCamera) {
+            vlog("Camera button found");
+        } else {
+            vlog("ERROR: btnCamera not found!");
+        }
         
         valCurrI = document.getElementById('val-current-i');
         valBlankI = document.getElementById('val-blank-i');
@@ -531,24 +552,34 @@
         btnTimeStart = document.getElementById('btn-time-start');
         timePointsCount = document.getElementById('time-points-count');
 
-        if (!cameraCanvas || !btnCamera) vlog("CRITICAL: UI Elements missing!");
-        else vlog("DOM elements bound.");
+        if (!cameraCanvas || !btnCamera) {
+            vlog("CRITICAL: UI Elements missing!");
+            alert("錯誤：找不到必要的UI元素，請檢查HTML結構");
+        } else {
+            vlog("DOM elements bound successfully.");
+        }
     }
 
     // --- Core Render & Analysis Loop ---
     function renderLoop() {
         try {
-            if (state.isCameraActive && state.video && state.video.readyState === state.video.HAVE_ENOUGH_DATA) {
-                cameraCtx.drawImage(state.video, 0, 0, cameraCanvas.width, cameraCanvas.height);
-                analyzeIntensity();
-                drawSampler();
+            if (state.isCameraActive && state.video) {
+                // Check if video has data available
+                if (state.video.videoWidth && state.video.videoHeight) {
+                    cameraCtx.drawImage(state.video, 0, 0, cameraCanvas.width, cameraCanvas.height);
+                    analyzeIntensity();
+                    drawSampler();
+                }
             } else if (!state.isCameraActive && state.sampler.x < 0) {
-                 cameraCtx.fillStyle = '#000';
-                 cameraCtx.fillRect(0, 0, cameraCanvas.width, cameraCanvas.height);
-                 cameraCtx.fillStyle = '#666';
-                 cameraCtx.font = '20px Inter, sans-serif';
-                 cameraCtx.textAlign = 'center';
-                 cameraCtx.fillText('請開啟相機', cameraCanvas.width/2, cameraCanvas.height/2);
+                 if (cameraCtx && cameraCanvas.width > 0 && cameraCanvas.height > 0) {
+                     cameraCtx.fillStyle = '#000';
+                     cameraCtx.fillRect(0, 0, cameraCanvas.width, cameraCanvas.height);
+                     cameraCtx.fillStyle = '#666';
+                     cameraCtx.font = '20px Inter, sans-serif';
+                     cameraCtx.textAlign = 'center';
+                     cameraCtx.textBaseline = 'middle';
+                     cameraCtx.fillText('請開啟相機', cameraCanvas.width/2, cameraCanvas.height/2);
+                 }
             }
             drawChart();
         } catch (e) {
@@ -735,7 +766,7 @@
         timePointsCount.textContent = state.timecourse.data.length;
     }
 
-    // --- Camera Control (Mirrored from combined_spec_analy.html) ---
+    // --- Camera Control (from combined_spec_analy.html - known working) ---
     async function updateCameraList() {
         if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
             cameraSelect.innerHTML = '<option value="">不支援相機 (請檢查 HTTPS)</option>';
@@ -750,6 +781,7 @@
             videoDevices.forEach((device, index) => {
                 const option = document.createElement('option');
                 option.value = device.deviceId;
+                // If label is empty (common before permission), provide a generic name
                 option.text = device.label || `Camera ${index + 1}`;
                 cameraSelect.appendChild(option);
             });
@@ -757,50 +789,78 @@
             if (videoDevices.length === 0) {
                 cameraSelect.innerHTML = '<option value="">未發現相機</option>';
             }
+            vlog("Camera list updated: " + videoDevices.length + " devices");
         } catch (err) {
-            console.error('Error listing cameras:', err);
+            vlog('Error listing cameras: ' + err.message);
             cameraSelect.innerHTML = '<option value="">無法讀取相機清單</option>';
         }
     }
 
+    let isCameraLoading = false;
     async function toggleCamera() {
+        vlog("toggleCamera function called");
+        if (isCameraLoading) return;
+        
         if (state.isCameraActive) {
+            vlog("Stopping camera");
             stopCamera();
-        } else {
-            try {
-                const deviceId = cameraSelect.value;
-                const constraints = {
-                    video: deviceId ? { deviceId: { exact: deviceId } } : { facingMode: 'environment' }
-                };
-                state.stream = await navigator.mediaDevices.getUserMedia(constraints);
-                
-                state.video = document.createElement('video');
-                state.video.setAttribute('playsinline', 'true');
-                state.video.setAttribute('autoplay', 'true');
-                state.video.setAttribute('muted', 'true');
-                state.video.srcObject = state.stream;
-                
-                await state.video.play();
-                
-                state.isCameraActive = true;
-                
-                state.video.addEventListener('loadedmetadata', () => {
-                    setupCanvasSize();
-                    if (state.sampler.x < 0) {
-                        state.sampler.x = cameraCanvas.width / 2;
-                        state.sampler.y = cameraCanvas.height / 2;
-                    }
-                }, { once: true });
-                
-                btnCamera.textContent = '關閉相機';
-                btnCamera.classList.add('active');
+            return;
+        }
 
-                // Update list now that permission is granted
-                setTimeout(updateCameraList, 500); 
+        try {
+            isCameraLoading = true;
+            btnCamera.textContent = '啟動中...';
+            btnCamera.disabled = true;
+
+            vlog("Starting camera initialization");
+            
+            const deviceId = cameraSelect.value;
+            let constraints = deviceId ? 
+                { video: { deviceId: { exact: deviceId } } } : 
+                { video: { facingMode: { ideal: 'environment' } } };
+
+            try {
+                vlog("Trying getUserMedia with constraints: " + JSON.stringify(constraints));
+                state.stream = await navigator.mediaDevices.getUserMedia(constraints);
+                vlog("Primary getUserMedia success");
             } catch (err) {
-                console.error('Camera Access Error:', err);
-                alert('無法啟動相機。請檢查權限及是否使用 HTTPS！\n錯誤: ' + err.message);
+                vlog("Primary getUserMedia failed: " + err.message + ". Trying fallback...");
+                state.stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                vlog("Fallback getUserMedia success");
             }
+
+            state.video = document.createElement('video');
+            state.video.setAttribute('playsinline', 'true');
+            state.video.setAttribute('webkit-playsinline', 'true');
+            state.video.setAttribute('autoplay', 'true');
+            state.video.setAttribute('muted', 'true');
+            state.video.muted = true;
+            
+            state.isCameraActive = true;
+            state.video.srcObject = state.stream;
+            
+            state.video.onloadedmetadata = () => {
+                vlog("Video metadata loaded. Starting play().");
+                state.video.play().catch(e => vlog("Play failed: " + e.message));
+                
+                setupCanvasSize();
+                if (state.sampler.x < 0) {
+                    state.sampler.x = cameraCanvas.width / 2;
+                    state.sampler.y = cameraCanvas.height / 2;
+                }
+            };
+
+            btnCamera.textContent = '關閉相機';
+            btnCamera.classList.add('active');
+            setTimeout(updateCameraList, 500); 
+
+        } catch (err) {
+            vlog("Camera initialization error: " + err.message);
+            alert('無法啟動相機。請檢查權限及是否使用 HTTPS！\n錯誤: ' + err.message);
+            stopCamera(); // Clean up if failed
+        } finally {
+            isCameraLoading = false;
+            btnCamera.disabled = false;
         }
     }
 
@@ -810,29 +870,34 @@
             state.stream = null;
         }
         state.isCameraActive = false;
+        state.video = null;
         btnCamera.textContent = '開啟相機';
         btnCamera.classList.remove('active');
-        cameraCtx.fillStyle = '#000';
-        cameraCtx.fillRect(0, 0, cameraCanvas.width, cameraCanvas.height);
-        cameraCtx.fillStyle = '#666';
-        cameraCtx.fillText('相機已關閉', cameraCanvas.width/2, cameraCanvas.height/2);
     }
 
     function setupCanvasSize() {
         const container = document.getElementById('camera-container');
-        const vWidth = state.video ? (state.video.videoWidth || 640) : 640;
-        const vHeight = state.video ? (state.video.videoHeight || 480) : 480;
+        if (!container) return;
+        
+        const vWidth = (state.video && state.video.videoWidth) ? state.video.videoWidth : 640;
+        const vHeight = (state.video && state.video.videoHeight) ? state.video.videoHeight : 480;
         const vRatio = vWidth / vHeight;
-        const cWidth = container.clientWidth;
-        const cHeight = container.clientHeight || 400; // Provide default if container height is 0
+        
+        const cWidth = container.clientWidth || 400;
+        const cHeight = container.clientHeight || 400;
         const cRatio = cWidth / cHeight;
         
         let w, h;
-        if (vRatio > cRatio) { w = cWidth; h = w / vRatio; }
-        else { h = cHeight; w = h * vRatio; }
+        if (vRatio > cRatio) { 
+            w = cWidth; 
+            h = w / vRatio; 
+        } else { 
+            h = cHeight; 
+            w = h * vRatio; 
+        }
         
-        cameraCanvas.width = w * 0.98;
-        cameraCanvas.height = h * 0.98;
+        cameraCanvas.width = Math.max(w * 0.95, 100);
+        cameraCanvas.height = Math.max(h * 0.95, 100);
     }
 
     // --- Interaction ---
@@ -992,7 +1057,16 @@
     }
 
     function setupEvents() {
+        vlog("Setting up events...");
+        
+        if (!btnCamera) {
+            vlog("ERROR: btnCamera is null!");
+            return;
+        }
+        
         btnCamera.addEventListener('click', toggleCamera);
+        vlog("Camera button event listener added");
+        
         document.getElementById('input-sampler-size').addEventListener('input', (e) => updateSamplerSize(e.target.value));
         document.getElementById('btn-blank').addEventListener('click', measureBlank);
         document.getElementById('btn-measure').addEventListener('click', updateSingleMeasurement);
@@ -1004,6 +1078,8 @@
         const tabs = document.querySelectorAll('.tab-btn');
         tabs[0].addEventListener('click', () => switchChartMode('calibration'));
         tabs[1].addEventListener('click', () => switchChartMode('timecourse'));
+        
+        vlog("All event listeners set up");
     }
 
     function exportCSV(type) {
@@ -1026,15 +1102,41 @@
         link.click();
     }
 
+    let isAppInitialized = false;
     async function init() {
-        bindDOMElements();
-        setupCanvasInteraction();
-        setupEvents();
-        setupCanvasSize();
-        requestAnimationFrame(renderLoop);
+        if (isAppInitialized) return;
+        isAppInitialized = true;
+        
+        try {
+            vlog("Initializing application...");
+            bindDOMElements();
+            setupCanvasInteraction();
+            setupEvents();
+            setupCanvasSize();
+            
+            // Populate camera list early
+            updateCameraList();
+            
+            requestAnimationFrame(renderLoop);
+            vlog("Application initialized");
+            document.body.classList.add('initialized');
+        } catch (err) {
+            vlog("Initialization error: " + err.message);
+            alert("網頁初始化失敗: " + err.message);
+        }
     }
 
-    window.onload = init;
+    // Use DOMContentLoaded instead of window.onload for better reliability
+    document.addEventListener('DOMContentLoaded', init);
+    
+    // Fallback for older browsers
+    window.addEventListener('load', () => {
+        if (!document.querySelector('.initialized')) {
+            vlog("Fallback initialization triggered");
+            init();
+            document.body.classList.add('initialized');
+        }
+    });
     
     window.addEventListener('resize', function() { if (state.isCameraActive) setupCanvasSize(); });
     
