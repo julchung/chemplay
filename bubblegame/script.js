@@ -743,44 +743,63 @@ function drawAimingLine(cx, cy, angle) {
 
 // Input Handling
 let lastTouchX = null;
+let isDragging = false;
+let startX = 0;
+let startY = 0;
 
-function handleInteractionStart(e) {
-    if (gameState !== 'PLAYING') return;
-    const coords = getGameCoords(e);
-    
-    // Check for firing in the bottom area (Y > 750)
-    const sx = INTERNAL_WIDTH / 2;
-    const sy = INTERNAL_HEIGHT - 50;
-    
-    if (coords.y > 750) {
-        // Shoot!
-        if (!projectile) {
-            projectile = new Projectile(currentIon, sx, sy, shooterAngle);
-        }
-    } else {
-        // Start sliding for aim anywhere else
-        lastTouchX = (e.touches ? e.touches[0].clientX : e.clientX);
+function fireProjectile() {
+    if (!projectile && gameState === 'PLAYING') {
+        const sx = INTERNAL_WIDTH / 2;
+        const sy = INTERNAL_HEIGHT - 50;
+        projectile = new Projectile(currentIon, sx, sy, shooterAngle);
     }
 }
 
+function handleInteractionStart(e) {
+    if (gameState !== 'PLAYING') return;
+    const touch = e.touches ? e.touches[0] : e;
+    startX = touch.clientX;
+    startY = touch.clientY;
+    lastTouchX = startX;
+    isDragging = false;
+}
+
 function handleInteractionMove(e) {
-    if (gameState !== 'PLAYING' || lastTouchX === null) return;
+    if (gameState !== 'PLAYING') return;
     
-    const currentX = (e.touches ? e.touches[0].clientX : e.clientX);
-    const deltaX = currentX - lastTouchX;
+    const touch = e.touches ? e.touches[0] : e;
+    const currentX = touch.clientX;
+    const currentY = touch.clientY;
     
-    // Sensitivity adjustment
-    const sensitivity = 0.005; 
-    shooterAngle -= deltaX * sensitivity;
-    
-    // Clamp angle
-    shooterAngle = Math.max(0.1, Math.min(Math.PI - 0.1, shooterAngle));
+    // Check if we are dragging
+    const dist = Math.hypot(currentX - startX, currentY - startY);
+    if (dist > 5) {
+        isDragging = true;
+    }
+
+    if (isDragging && lastTouchX !== null) {
+        const deltaX = currentX - lastTouchX;
+        // Sensitivity adjustment
+        const sensitivity = 0.005; 
+        shooterAngle -= deltaX * sensitivity;
+        
+        // Clamp angle
+        shooterAngle = Math.max(0.1, Math.min(Math.PI - 0.1, shooterAngle));
+    }
     
     lastTouchX = currentX;
 }
 
-function handleInteractionEnd() {
+function handleInteractionEnd(e) {
+    if (gameState !== 'PLAYING') return;
+    
+    if (!isDragging) {
+        // It's a tap!
+        fireProjectile();
+    }
+    
     lastTouchX = null;
+    isDragging = false;
 }
 
 // Event Listeners
