@@ -1,0 +1,961 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Web 分光儀分析工具</title>
+    <style>
+        :root {
+            --primary-bg: #f5f7fa;
+            --sidebar-bg: #ffffff;
+            --accent-color: #3498db;
+            --text-color: #2c3e50;
+            --border-color: #dcdde1;
+        }
+
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: 'Segoe UI', 'Microsoft JhengHei', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--primary-bg);
+            color: var(--text-color);
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        canvas {
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        @media (max-width: 900px) {
+            body {
+                flex-direction: column;
+                height: auto;
+                overflow: auto;
+            }
+        }
+
+        /* Sidebar / Controls */
+        #controls {
+            width: 320px;
+            background-color: var(--sidebar-bg);
+            border-right: 1px solid var(--border-color);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            box-shadow: 2px 0 5px rgba(0,0,0,0.05);
+            z-index: 10;
+            overflow-y: auto;
+        }
+
+        @media (max-width: 900px) {
+            #controls {
+                width: 100%;
+                border-right: none;
+                border-bottom: 1px solid var(--border-color);
+                box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            }
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            margin: 0 0 10px 0;
+            color: var(--accent-color);
+            text-align: center;
+        }
+
+        .section {
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 15px;
+        }
+
+        .section:last-child {
+            border-bottom: none;
+        }
+
+        .label-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            margin-bottom: 10px;
+        }
+
+        label {
+            font-weight: bold;
+            font-size: 0.9rem;
+        }
+
+        button, .file-input-label {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            background-color: #f1f2f6;
+            border: 1px solid #ced1d6;
+            border-radius: 6px;
+            cursor: pointer;
+            text-align: center;
+            font-size: 0.95rem;
+            transition: all 0.2s;
+            color: var(--text-color);
+        }
+
+        button:hover {
+            background-color: #e2e4e9;
+        }
+
+        button.active {
+            background-color: var(--accent-color);
+            color: white;
+            border-color: var(--accent-color);
+        }
+
+        .file-input-label {
+            background-color: #34495e;
+            color: white;
+            border: none;
+        }
+
+        select, input[type="number"] {
+            width: 100%;
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            background: white;
+        }
+
+        .calib-row {
+            display: flex;
+            gap: 5px;
+            align-items: center;
+        }
+
+        .calib-row button {
+            flex: 2;
+            white-space: nowrap;
+            padding: 10px 5px;
+        }
+
+        .calib-row input {
+            flex: 1;
+            min-width: 60px;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        /* Main Workspace */
+        #main-view {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            gap: 20px;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        @media (max-width: 900px) {
+            #main-view {
+                height: auto;
+                padding: 10px;
+            }
+        }
+
+        .canvas-container {
+            flex: 1;
+            background: #000;
+            border-radius: 8px;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 300px;
+        }
+
+        canvas {
+            display: block;
+            touch-action: none; /* Critical for custom swipe/drag handling */
+        }
+
+        #graph-container {
+            flex: 1;
+            background: #fff;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            padding: 10px;
+            min-height: 250px;
+        }
+
+        .info-panel {
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: #d63031;
+            background: #ffeaa7;
+            padding: 10px;
+            border-radius: 6px;
+            text-align: center;
+        }
+
+        /* Glassmorphism/Modern enhancements */
+        .card {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(4px);
+            border-radius: 12px;
+        }
+    </style>
+</head>
+<body>
+
+<div id="controls">
+    <h1>光譜儀分析</h1>
+    
+    <div class="section">
+        <label for="imageLoader" class="file-input-label">開啟照片</label>
+        <input type="file" id="imageLoader" accept="image/*">
+    </div>
+
+    <div class="section">
+        <div class="label-group">
+            <label>選擇相機</label>
+            <select id="cameraSelect">
+                <option value="">請點擊開啟相機以取得清單</option>
+            </select>
+        </div>
+        <div style="display: flex; gap: 5px;">
+            <button id="btnCamera">開啟相機</button>
+            <button id="btnFreeze">拍照截圖</button>
+        </div>
+    </div>
+
+    <div class="section">
+        <label>控制與偵測</label>
+        <div style="display: flex; flex-direction: column; gap: 5px; margin-top:5px;">
+            <button id="btnLockY">鎖定水平位置: 關</button>
+            <div class="calib-row">
+                <button id="btnCalib1">設定波長 1</button>
+                <input type="number" id="inputWave1" placeholder="nm" step="0.1">
+            </div>
+            <div class="calib-row">
+                <button id="btnCalib2">設定波長 2</button>
+                <input type="number" id="inputWave2" placeholder="nm" step="0.1">
+            </div>
+            <button id="btnResetCalib">重設波長</button>
+        </div>
+    </div>
+
+    <div class="section">
+        <label>資料匯出</label>
+        <div style="display: flex; flex-direction: column; gap: 5px; margin-top:5px;">
+            <button id="btnExportCSV">匯出 CSV</button>
+            <button id="btnScreenshot">儲存圖表截圖</button>
+        </div>
+    </div>
+
+    <div id="statusInfo" class="info-panel" style="display:none;">
+        (0.0 nm, 0)
+    </div>
+
+    <div style="margin-top: auto; font-size: 0.8rem; color: #95a5a6; text-align: center;">
+        提示：點擊或拖曳圖形可移動十字游標
+    </div>
+</div>
+
+<div id="main-view">
+    <div class="canvas-container" id="image-view">
+        <canvas id="viewCanvas"></canvas>
+    </div>
+    <div id="graph-container">
+        <canvas id="graphCanvas"></canvas>
+    </div>
+</div>
+
+<script>
+    // State management
+    const state = {
+        img: null,
+        video: null,
+        stream: null,
+        isCameraActive: false,
+        isFrozen: false,
+        crossX: -1,
+        lineScanY: -1,
+        intensityData: [],
+        calibPixel1: -1,
+        calibWave1: -1,
+        calibScanY1: -1,
+        calibPixel2: -1,
+        calibWave2: -1,
+        calibScanY2: -1,
+        isCalibrated: false,
+        isYLocked: false,
+        displayParams: { dx: 0, dw: 0 }, // Stores mapping of image to screen
+        statusMsg: ""
+    };
+
+    const viewCanvas = document.getElementById('viewCanvas');
+    const viewCtx = viewCanvas.getContext('2d', { alpha: false });
+    const graphCanvas = document.getElementById('graphCanvas');
+    const graphCtx = graphCanvas.getContext('2d');
+    const cameraSelect = document.getElementById('cameraSelect');
+    const statusInfo = document.getElementById('statusInfo');
+
+    // Initialization
+    window.addEventListener('DOMContentLoaded', init);
+    window.addEventListener('resize', handleResize);
+
+    async function init() {
+        handleResize();
+        setupEvents();
+        // Skip automatic updateCameraList() here as it can block on iOS
+        // and usually returns empty labels anyway without user-triggered permission.
+        
+        // Initial draw loop
+        requestAnimationFrame(drawLoop);
+    }
+
+    async function updateCameraList() {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
+            cameraSelect.innerHTML = '<option value="">不支援相機 (請檢查 HTTPS)</option>';
+            return;
+        }
+
+        try {
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            const videoDevices = devices.filter(d => d.kind === 'videoinput');
+            
+            cameraSelect.innerHTML = '';
+            videoDevices.forEach((device, index) => {
+                const option = document.createElement('option');
+                option.value = device.deviceId;
+                option.text = device.label || `Camera ${index + 1}`;
+                cameraSelect.appendChild(option);
+            });
+
+            if (videoDevices.length === 0) {
+                cameraSelect.innerHTML = '<option value="">未發現相機</option>';
+            }
+        } catch (err) {
+            console.error('Error listing cameras:', err);
+            cameraSelect.innerHTML = '<option value="">無法讀取相機清單</option>';
+        }
+    }
+
+    function setupEvents() {
+        // Image Loader
+        document.getElementById('imageLoader').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const img = new Image();
+                img.onload = function() {
+                    state.img = img;
+                    state.isCameraActive = false;
+                    state.crossX = img.width / 2;
+                    state.lineScanY = img.height / 2;
+                    stopCamera();
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
+
+        // Camera Toggle
+        document.getElementById('btnCamera').addEventListener('click', toggleCamera);
+        document.getElementById('btnFreeze').addEventListener('click', (e) => {
+            if (state.isCameraActive && state.video) {
+                state.isFrozen = !state.isFrozen;
+                if (state.isFrozen) {
+                    state.video.pause();
+                    e.target.textContent = '恢復即時';
+                } else {
+                    state.video.play();
+                    e.target.textContent = '拍照截圖';
+                }
+            }
+        });
+
+        // Scanline Lock
+        const btnLockY = document.getElementById('btnLockY');
+        btnLockY.addEventListener('click', () => {
+            state.isYLocked = !state.isYLocked;
+            btnLockY.textContent = `鎖定水平位置: ${state.isYLocked ? '開' : '關'}`;
+            btnLockY.classList.toggle('active', state.isYLocked);
+        });
+
+        // Calibration
+        document.getElementById('btnCalib1').addEventListener('click', (e) => {
+            const btn = e.target;
+            btn.style.opacity = '0.5';
+            setTimeout(() => { btn.style.opacity = '1'; }, 100);
+
+            if (state.crossX < 0) return alert('請先載入影像並點擊選擇位置');
+            
+            const inputVal = document.getElementById('inputWave1').value;
+            if (inputVal === "" || isNaN(inputVal)) {
+                return alert('請在輸入框中輸入波長數值');
+            }
+
+            state.calibWave1 = parseFloat(inputVal);
+            state.calibPixel1 = state.crossX;
+            state.calibScanY1 = state.lineScanY;
+            checkCalibration();
+            state.statusMsg = `已設定點 1: ${state.calibWave1} nm`;
+            setTimeout(() => { state.statusMsg = ""; }, 3000);
+        });
+
+        document.getElementById('btnCalib2').addEventListener('click', (e) => {
+            const btn = e.target;
+            btn.style.opacity = '0.5';
+            setTimeout(() => { btn.style.opacity = '1'; }, 100);
+
+            if (state.crossX < 0) return alert('請先載入影像並點擊選擇位置');
+            
+            const inputVal = document.getElementById('inputWave2').value;
+            if (inputVal === "" || isNaN(inputVal)) {
+                return alert('請在輸入框中輸入波長數值');
+            }
+
+            state.calibWave2 = parseFloat(inputVal);
+            state.calibPixel2 = state.crossX;
+            state.calibScanY2 = state.lineScanY;
+            checkCalibration();
+            state.statusMsg = `已設定點 2: ${state.calibWave2} nm`;
+            setTimeout(() => { state.statusMsg = ""; }, 3000);
+        });
+
+        document.getElementById('btnResetCalib').addEventListener('click', () => {
+            state.calibPixel1 = state.calibPixel2 = -1;
+            state.isCalibrated = false;
+        });
+
+        // Export
+        document.getElementById('btnExportCSV').addEventListener('click', exportCSV);
+        document.getElementById('btnScreenshot').addEventListener('click', saveScreenshot);
+
+        // Interaction
+        viewCanvas.addEventListener('pointerdown', (e) => {
+            viewCanvas.setPointerCapture(e.pointerId);
+            handleInteraction(e);
+        });
+        viewCanvas.addEventListener('pointermove', (e) => {
+            if (viewCanvas.hasPointerCapture(e.pointerId)) handleInteraction(e);
+        });
+        viewCanvas.addEventListener('pointerup', (e) => {
+            viewCanvas.releasePointerCapture(e.pointerId);
+        });
+        
+        graphCanvas.addEventListener('pointerdown', (e) => {
+            graphCanvas.setPointerCapture(e.pointerId);
+            handleGraphInteraction(e);
+        });
+        graphCanvas.addEventListener('pointermove', (e) => {
+            if (graphCanvas.hasPointerCapture(e.pointerId)) handleGraphInteraction(e);
+        });
+        graphCanvas.addEventListener('pointerup', (e) => {
+            graphCanvas.releasePointerCapture(e.pointerId);
+        });
+    }
+
+    async function toggleCamera() {
+        if (state.isCameraActive) {
+            stopCamera();
+        } else {
+            try {
+                const deviceId = cameraSelect.value;
+                const constraints = {
+                    video: deviceId ? { deviceId: { exact: deviceId } } : { facingMode: 'environment' }
+                };
+                state.stream = await navigator.mediaDevices.getUserMedia(constraints);
+                state.video = document.createElement('video');
+                state.video.setAttribute('playsinline', 'true');
+                state.video.setAttribute('autoplay', 'true');
+                state.video.setAttribute('muted', 'true');
+                state.video.srcObject = state.stream;
+                state.video.play();
+                state.isCameraActive = true;
+                state.isFrozen = false;
+                state.img = null;
+                // Initialize crosshair to center once video starts playing
+                state.video.addEventListener('loadedmetadata', () => {
+                    if (state.crossX < 0) {
+                        state.crossX = state.video.videoWidth / 2;
+                        state.lineScanY = state.video.videoHeight / 2;
+                    }
+                }, { once: true });
+                
+                document.getElementById('btnCamera').textContent = '關閉相機';
+                document.getElementById('btnCamera').classList.add('active');
+                document.getElementById('btnFreeze').textContent = '拍照截圖';
+
+                // Update list now that permission is granted
+                setTimeout(updateCameraList, 500); 
+            } catch (err) {
+                console.error('Camera Access Error:', err);
+                alert('無法啟動相機。請檢查權限及是否使用 HTTPS！');
+            }
+        }
+    }
+
+    function stopCamera() {
+        if (state.stream) {
+            state.stream.getTracks().forEach(track => track.stop());
+            state.stream = null;
+        }
+        state.isCameraActive = false;
+        state.isFrozen = false;
+        document.getElementById('btnCamera').textContent = '開啟相機';
+        document.getElementById('btnCamera').classList.remove('active');
+        document.getElementById('btnFreeze').textContent = '拍照截圖';
+    }
+
+    function checkCalibration() {
+        if (state.calibPixel1 >= 0 && state.calibPixel2 >= 0 && state.calibPixel1 !== state.calibPixel2) {
+            state.isCalibrated = true;
+        } else {
+            state.isCalibrated = false;
+        }
+    }
+
+    function handleResize() {
+        const imgContainer = document.getElementById('image-view');
+        viewCanvas.width = imgContainer.clientWidth;
+        viewCanvas.height = imgContainer.clientHeight;
+
+        const graphContainer = document.getElementById('graph-container');
+        // Match the layout exactly to the image container above for alignment
+        graphCanvas.width = viewCanvas.width;
+        graphCanvas.height = graphContainer.clientHeight;
+    }
+
+    function handleInteraction(e) {
+        const rect = viewCanvas.getBoundingClientRect();
+        const xScale = (state.img || state.video)?.width / rect.width || 1;
+        const yScale = (state.img || state.video)?.height / rect.height || 1;
+        
+        // We need to account for 'aspect-ratio' preserving layout if we draw it that way
+        // Simplified: map screen to canvas coordinate
+        const src = state.img || (state.isCameraActive ? state.video : null);
+        if (!src) return;
+
+        const srcWidth = src.videoWidth || src.width;
+        const srcHeight = src.videoHeight || src.height;
+        if (!srcWidth || !srcHeight) return;
+
+        // Calculate actual image display rectangle in canvas
+        const ratio = Math.min(viewCanvas.width / srcWidth, viewCanvas.height / srcHeight);
+        const dw = srcWidth * ratio;
+        const dh = srcHeight * ratio;
+        const dx = (viewCanvas.width - dw) / 2;
+        const dy = (viewCanvas.height - dh) / 2;
+
+        const mx = e.clientX - rect.left;
+        const my = e.clientY - rect.top;
+
+        if (mx >= dx && mx <= dx + dw && my >= dy && my <= dy + dh) {
+            state.crossX = (mx - dx) / ratio;
+            if (!state.isYLocked) {
+                state.lineScanY = (my - dy) / ratio;
+            }
+        }
+    }
+
+    function handleGraphInteraction(e) {
+        const src = state.img || (state.isCameraActive ? state.video : null);
+        if (!src || state.intensityData.length === 0) return;
+
+        const rect = graphCanvas.getBoundingClientRect();
+        const mx = e.clientX - rect.left;
+        
+        // Align with image horizontal position
+        const { dx, dw } = state.displayParams;
+        if (mx >= dx && mx <= dx + dw) {
+            const srcWidth = src.videoWidth || src.width;
+            state.crossX = ((mx - dx) / dw) * (srcWidth - 1);
+        }
+    }
+
+    function drawLoop() {
+        try {
+            drawMain();
+            drawGraph();
+        } catch(e) {
+            console.error("Error in draw loop:", e);
+        }
+        requestAnimationFrame(drawLoop);
+    }
+
+    function drawMain() {
+        viewCtx.fillStyle = '#111';
+        viewCtx.fillRect(0, 0, viewCanvas.width, viewCanvas.height);
+
+        const src = state.img || (state.isCameraActive ? state.video : null);
+        if (!src) {
+            viewCtx.fillStyle = '#666';
+            viewCtx.textAlign = 'center';
+            viewCtx.font = '20px Arial';
+            viewCtx.fillText('請載入照片或開啟相機', viewCanvas.width / 2, viewCanvas.height / 2);
+            return;
+        }
+
+        const srcWidth = src.videoWidth || src.width;
+        const srcHeight = src.videoHeight || src.height;
+        
+        // Don't try to draw if video metadata hasn't loaded yet
+        if (!srcWidth || !srcHeight) {
+            viewCtx.fillStyle = '#666';
+            viewCtx.textAlign = 'center';
+            viewCtx.font = '20px Arial';
+            viewCtx.fillText('等待相機畫面載入...', viewCanvas.width / 2, viewCanvas.height / 2);
+            return;
+        }
+
+        if (state.crossX < 0) {
+            state.crossX = srcWidth / 2;
+            state.lineScanY = srcHeight / 2;
+        }
+
+        const ratio = Math.min(viewCanvas.width / srcWidth, viewCanvas.height / srcHeight);
+        const dw = srcWidth * ratio;
+        const dh = srcHeight * ratio;
+        const dx = (viewCanvas.width - dw) / 2;
+        const dy = (viewCanvas.height - dh) / 2;
+        state.displayParams = { dx, dw }; // Save for graph alignment
+
+        viewCtx.drawImage(src, dx, dy, dw, dh);
+
+        // Scanline
+        const lineY = dy + state.lineScanY * ratio;
+        viewCtx.strokeStyle = 'red';
+        viewCtx.lineWidth = 1;
+        viewCtx.beginPath();
+        viewCtx.moveTo(dx, lineY);
+        viewCtx.lineTo(dx + dw, lineY);
+        viewCtx.stroke();
+
+        // Crosshair
+        const crossX = dx + state.crossX * ratio;
+        viewCtx.beginPath();
+        viewCtx.moveTo(crossX - 10, lineY);
+        viewCtx.lineTo(crossX + 10, lineY);
+        viewCtx.moveTo(crossX, lineY - 10);
+        viewCtx.lineTo(crossX, lineY + 10);
+        viewCtx.stroke();
+
+        // Calibration markers
+        if (state.calibPixel1 >= 0) {
+            viewCtx.strokeStyle = 'cyan';
+            viewCtx.beginPath();
+            viewCtx.arc(dx + state.calibPixel1 * ratio, dy + state.calibScanY1 * ratio, 5, 0, Math.PI * 2);
+            viewCtx.stroke();
+        }
+        if (state.calibPixel2 >= 0) {
+            viewCtx.strokeStyle = 'yellow';
+            viewCtx.beginPath();
+            viewCtx.arc(dx + state.calibPixel2 * ratio, dy + state.calibScanY2 * ratio, 5, 0, Math.PI * 2);
+            viewCtx.stroke();
+        }
+
+        // Extract intensity
+        try {
+            const srcWidth = src.videoWidth || src.width;
+            const srcHeight = src.videoHeight || src.height;
+
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = srcWidth;
+            tempCanvas.height = 1;
+            const tempCtx = tempCanvas.getContext('2d');
+            tempCtx.drawImage(src, 0, -Math.floor(state.lineScanY), srcWidth, srcHeight);
+            const data = tempCtx.getImageData(0, 0, srcWidth, 1).data;
+            
+            const intensities = [];
+            for (let i = 0; i < data.length; i += 4) {
+                // Brightness = (R+G+B)/3
+                intensities.push((data[i] + data[i+1] + data[i+2]) / 3);
+            }
+            state.intensityData = intensities;
+        } catch(e) {}
+    }
+
+    function drawGraph() {
+        graphCtx.clearRect(0, 0, graphCanvas.width, graphCanvas.height);
+        if (state.intensityData.length === 0) return;
+
+        // Use the same horizontal mapping as the image display
+        const { dx, dw } = state.displayParams;
+        const gx = dx || 0;
+        const gw = dw || graphCanvas.width;
+
+        const padding = 40;
+        const gh = graphCanvas.height - padding * 2;
+        const gy = padding;
+
+        // Axes
+        graphCtx.strokeStyle = '#000';
+        graphCtx.lineWidth = 1;
+        graphCtx.beginPath();
+        graphCtx.moveTo(gx, gy);
+        graphCtx.lineTo(gx, gy + gh);
+        graphCtx.lineTo(gx + gw, gy + gh);
+        graphCtx.stroke();
+
+        // Labels
+        graphCtx.fillStyle = '#000';
+        graphCtx.font = '10px Arial';
+        graphCtx.textAlign = 'right';
+        for (let i = 0; i <= 255; i += 51) {
+            const y = gy + gh - (i / 255) * gh;
+            graphCtx.fillText(i, gx - 5, y + 3);
+        }
+
+        // Plot
+        graphCtx.strokeStyle = '#2980b9';
+        graphCtx.beginPath();
+        for (let i = 0; i < state.intensityData.length; i++) {
+            const x = gx + (i / (state.intensityData.length - 1)) * gw;
+            const y = gy + gh - (state.intensityData[i] / 255) * gh;
+            if (i === 0) graphCtx.moveTo(x, y);
+            else graphCtx.lineTo(x, y);
+        }
+        graphCtx.stroke();
+
+        // X Axis labels
+        graphCtx.textAlign = 'center';
+        const step = Math.floor(state.intensityData.length / 5);
+        for (let i = 0; i < state.intensityData.length; i += step) {
+            const x = gx + (i / (state.intensityData.length - 1)) * gw;
+            let label = i;
+            if (state.isCalibrated) {
+                label = mapRange(i, state.calibPixel1, state.calibPixel2, state.calibWave1, state.calibWave2).toFixed(1);
+            }
+            graphCtx.fillText(label, x, gy + gh + 15);
+        }
+
+        // Cursor
+        if (state.crossX >= 0) {
+            const ix = Math.floor(state.crossX);
+            const val = state.intensityData[ix] || 0;
+            const cx = gx + (state.crossX / (state.intensityData.length - 1)) * gw;
+            const cy = gy + gh - (val / 255) * gh;
+
+            graphCtx.strokeStyle = 'red';
+            graphCtx.beginPath();
+            graphCtx.moveTo(cx - 10, cy); graphCtx.lineTo(cx + 10, cy);
+            graphCtx.moveTo(cx, cy - 10); graphCtx.lineTo(cx, cy + 10);
+            graphCtx.stroke();
+
+            let xLabel = state.crossX.toFixed(1);
+            if(state.isCalibrated) {
+                xLabel = mapRange(state.crossX, state.calibPixel1, state.calibPixel2, state.calibWave1, state.calibWave2).toFixed(1) + ' nm';
+            }
+            statusInfo.style.display = 'block';
+            if (state.statusMsg) {
+                statusInfo.textContent = state.statusMsg;
+                statusInfo.style.background = '#55efc4'; // Change color for success msg
+                statusInfo.style.color = '#000';
+            } else {
+                statusInfo.textContent = `(${xLabel}, ${Math.floor(val)})`;
+                statusInfo.style.background = '#ffeaa7';
+                statusInfo.style.color = '#d63031';
+            }
+        }
+    }
+
+    function mapRange(val, inMin, inMax, outMin, outMax) {
+        return outMin + (outMax - outMin) * (val - inMin) / (inMax - inMin);
+    }
+
+    function exportCSV() {
+        if (!state.isCalibrated) return alert('請先完成兩點波長校正！');
+        
+        let csv = "Wavelength(nm),Intensity\n";
+        for (let i = 0; i < state.intensityData.length; i++) {
+            const w = mapRange(i, state.calibPixel1, state.calibPixel2, state.calibWave1, state.calibWave2);
+            if (w >= 290 && w <= 800) {
+                csv += `${w.toFixed(2)},${state.intensityData[i]}\n`;
+            }
+        }
+
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'spectrometer_data.csv';
+        a.click();
+    }
+
+    async function saveScreenshot() {
+        if (!state.isCalibrated) return alert('請先完成校正後再進行存檔區間截圖！');
+        
+        const src = state.img || (state.isCameraActive ? state.video : null);
+        if (!src) return alert('沒有可用的影像來源！');
+
+        const srcWidth = src.videoWidth || src.width;
+        const srcHeight = src.videoHeight || src.height;
+
+        // Find crop boundaries for 290-850nm
+        const p_290 = mapRange(290, state.calibWave1, state.calibWave2, state.calibPixel1, state.calibPixel2);
+        const p_800 = mapRange(850, state.calibWave1, state.calibWave2, state.calibPixel1, state.calibPixel2); // 850nm as requested
+        
+        let startI = Math.floor(Math.min(p_290, p_800));
+        let endI = Math.ceil(Math.max(p_290, p_800));
+        
+        startI = Math.max(0, Math.min(startI, srcWidth - 1));
+        endI = Math.max(0, Math.min(endI, srcWidth - 1));
+
+        if (startI >= endI) return alert('截圖範圍無效！');
+
+        const cropWidth = endI - startI + 1;
+        const outW = Math.max(cropWidth, 800);
+        const graphH = 300;
+        
+        const sy = Math.round(state.lineScanY);
+        const cropY = Math.max(0, sy - 25);
+        const cropBottom = Math.min(srcHeight, sy + 25);
+        const cropHeight = cropBottom - cropY;
+
+        const gx = 50;
+        const gw = outW - 100;
+        
+        const scaleRatio = gw / cropWidth;
+        const scaledImgH = Math.round(cropHeight * scaleRatio);
+        const outH = graphH + scaledImgH + 60; 
+
+        // Create Offscreen Canvas for Export
+        const exportCanvas = document.createElement('canvas');
+        exportCanvas.width = outW;
+        exportCanvas.height = outH;
+        const ctx = exportCanvas.getContext('2d');
+
+        // Background
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, outW, outH);
+
+        const gy = 20;
+        const gh = graphH - 40;
+
+        // Find Maximum Intensity in Range
+        let maxIntensityInRange = 0;
+        for (let i = startI; i <= endI; i++) {
+            const val = state.intensityData[i] || 0;
+            if (val > maxIntensityInRange) maxIntensityInRange = val;
+        }
+        
+        // Define Y-axis max (1.1x max intensity, min 50 for empty plots)
+        const yMax = Math.max(50, Math.ceil(maxIntensityInRange * 1.1));
+        const numYSteps = 5;
+        const yStep = yMax / numYSteps;
+
+        // Draw Axes
+        ctx.strokeStyle = '#000000';
+        ctx.fillStyle = '#000000';
+        ctx.font = '12px Arial';
+        ctx.lineWidth = 1;
+        
+        ctx.beginPath();
+        ctx.moveTo(gx, gy + gh);
+        ctx.lineTo(gx + gw, gy + gh);
+        ctx.moveTo(gx, gy + gh);
+        ctx.lineTo(gx, gy);
+        ctx.stroke();
+
+        // Y Labels
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'middle';
+        for (let i = 0; i <= numYSteps; i++) {
+            const val = i * yStep;
+            const y = gy + gh - (val / yMax) * gh;
+            ctx.beginPath();
+            ctx.moveTo(gx - 5, y);
+            ctx.lineTo(gx, y);
+            ctx.stroke();
+            ctx.fillText(Math.round(val).toString(), gx - 8, y);
+        }
+
+        // X Labels (Wavelength marks)
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+        const w_per_pixel = (state.calibWave2 - state.calibWave1) / (state.calibPixel2 - state.calibPixel1);
+        const start_w = state.calibWave1 + (startI - state.calibPixel1) * w_per_pixel;
+        const end_w = state.calibWave1 + (endI - state.calibPixel1) * w_per_pixel;
+        
+        const w_min = Math.min(start_w, end_w);
+        const w_max = Math.max(start_w, end_w);
+        
+        const start_mark = Math.ceil(w_min / 50.0) * 50;
+        for (let w = start_mark; w <= w_max; w += 50) {
+            const pixel_i = state.calibPixel1 + (w - state.calibWave1) / w_per_pixel;
+            if (pixel_i >= startI && pixel_i <= endI) {
+                const x = gx + ((pixel_i - startI) / (endI - startI)) * gw;
+                ctx.beginPath();
+                ctx.moveTo(x, gy + gh);
+                ctx.lineTo(x, gy + gh + 5);
+                ctx.stroke();
+                ctx.fillText(w.toString(), x, gy + gh + 8);
+            }
+        }
+        
+        // Edge Labels
+        ctx.textAlign = 'left';
+        ctx.fillText(start_w.toFixed(1) + " nm", gx, gy + gh + 25);
+        ctx.textAlign = 'right';
+        ctx.fillText(end_w.toFixed(1) + " nm", gx + gw, gy + gh + 25);
+
+        // Draw Plot Line
+        ctx.strokeStyle = '#2980b9'; // Using theme accent color
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        for (let i = startI; i <= endI; i++) {
+            const x = gx + ((i - startI) / (endI - startI)) * gw;
+            const val = state.intensityData[i] || 0;
+            const y = gy + gh - (val / yMax) * gh;
+            if (i === startI) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+
+        // Draw Cropped Image strip
+        const imgDrawX = gx;
+        const imgDrawY = graphH + 20;
+        const imgDrawW = gw;
+        const imgDrawH = scaledImgH;
+        
+        // Create a temporary canvas to extract the crop
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = cropWidth;
+        tempCanvas.height = cropHeight;
+        const tempCtx = tempCanvas.getContext('2d');
+        tempCtx.drawImage(src, startI, cropY, cropWidth, cropHeight, 0, 0, cropWidth, cropHeight);
+        
+        ctx.drawImage(tempCanvas, imgDrawX, imgDrawY, imgDrawW, imgDrawH);
+
+        // Draw Center Red Line over Crop
+        const lineY = imgDrawY + imgDrawH / 2.0;
+        ctx.strokeStyle = '#ff0000';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(imgDrawX, lineY);
+        ctx.lineTo(imgDrawX + imgDrawW, lineY);
+        ctx.stroke();
+
+        // Save
+        const link = document.createElement('a');
+        link.download = 'spectrometer_analysis.png';
+        link.href = exportCanvas.toDataURL('image/png');
+        link.click();
+    }
+
+</script>
+</body>
+</html>
