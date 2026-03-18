@@ -748,18 +748,17 @@ function handleInteractionStart(e) {
     if (gameState !== 'PLAYING') return;
     const coords = getGameCoords(e);
     
-    // Check if clicking/tapping near the turret base (center bottom)
+    // Check for firing in the bottom area (Y > 750)
     const sx = INTERNAL_WIDTH / 2;
     const sy = INTERNAL_HEIGHT - 50;
-    const distToTurret = Math.hypot(coords.x - sx, coords.y - sy);
     
-    if (distToTurret < 60) {
+    if (coords.y > 750) {
         // Shoot!
         if (!projectile) {
             projectile = new Projectile(currentIon, sx, sy, shooterAngle);
         }
     } else {
-        // Start sliding for aim
+        // Start sliding for aim anywhere else
         lastTouchX = (e.touches ? e.touches[0].clientX : e.clientX);
     }
 }
