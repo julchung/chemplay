@@ -478,6 +478,7 @@
     </div>
 </div>
 
+<!-- Removed bottom log -->
 
 <!-- No Chart.js dependency needed -->
 
@@ -763,18 +764,15 @@
     }
 
     async function toggleCamera() {
-        vlog("toggleCamera clicked, active=" + state.isCameraActive);
         if (state.isCameraActive) {
             stopCamera();
         } else {
             try {
-                vlog("Requesting camera access...");
                 const deviceId = cameraSelect.value;
                 const constraints = {
                     video: deviceId ? { deviceId: { exact: deviceId } } : { facingMode: 'environment' }
                 };
                 state.stream = await navigator.mediaDevices.getUserMedia(constraints);
-                vlog("Camera access granted.");
                 
                 state.video = document.createElement('video');
                 state.video.setAttribute('playsinline', 'true');
@@ -782,14 +780,11 @@
                 state.video.setAttribute('muted', 'true');
                 state.video.srcObject = state.stream;
                 
-                vlog("Video element created, calling play()...");
                 await state.video.play();
-                vlog("Video playing.");
                 
                 state.isCameraActive = true;
                 
                 state.video.addEventListener('loadedmetadata', () => {
-                    vlog("Video metadata loaded: " + state.video.videoWidth + "x" + state.video.videoHeight);
                     setupCanvasSize();
                     if (state.sampler.x < 0) {
                         state.sampler.x = cameraCanvas.width / 2;
