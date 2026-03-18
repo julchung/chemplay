@@ -47,32 +47,50 @@
             display: flex;
             width: 100%;
             height: 100%;
-            padding: 15px;
-            gap: 15px;
+            padding: 12px;
+            gap: 12px;
+            overflow: hidden;
         }
 
         #left-panel {
-            flex: 4;
+            flex: 2.8;
             display: flex;
             flex-direction: column;
+            gap: 12px;
+            min-width: 0;
+            height: 100%;
+        }
+
+        .panel-row {
+            display: flex;
             gap: 15px;
-            min-width: 0; /* Important for flex-shrink */
+            flex: 1;
+            min-height: 0;
+        }
+
+        .panel-column {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            min-height: 0;
+            min-width: 0;
         }
 
         #right-panel {
             flex: 1;
-            min-width: 320px;
+            min-width: 340px;
             background: var(--panel-bg);
             backdrop-filter: blur(12px);
             -webkit-backdrop-filter: blur(12px);
             border: 1px solid var(--border-color);
             border-radius: var(--card-radius);
-            padding: 20px;
+            padding: 15px;
             display: flex;
             flex-direction: column;
-            gap: 20px;
-            overflow-y: auto;
+            gap: 10px;
+            overflow-y: hidden;
             box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            height: 100%;
         }
 
         /* Glassmorphism Cards */
@@ -90,10 +108,10 @@
         #camera-container {
             flex: 1;
             display: flex;
-            justify-content: center;
-            align-items: center;
+            flex-direction: column;
             background: #000;
-            min-height: 250px;
+            min-width: 0;
+            min-height: 0;
         }
 
         #cameraCanvas {
@@ -104,29 +122,43 @@
             cursor: crosshair;
         }
 
-
-    /* Removed static camera-video CSS */
-
-        #chart-container {
+        .chart-container {
             flex: 1;
-            padding: 15px;
-            min-height: 250px;
             display: flex;
             flex-direction: column;
+            min-width: 0;
+            min-height: 0;
+            padding: 0; /* Header and wrapper will handle padding */
         }
 
-        #chart-wrapper {
+        .chart-wrapper {
             flex: 1;
             position: relative;
             width: 100%;
+            min-height: 0;
+            padding: 10px;
+        }
+
+        .panel-header {
+            padding: 10px 15px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(255,255,255,0.03);
+        }
+
+        .panel-header h3 {
+            font-size: 0.95rem;
+            color: var(--text-main);
         }
 
         /* UI Controls */
         .control-group {
             display: flex;
             flex-direction: column;
-            gap: 10px;
-            padding-bottom: 15px;
+            gap: 8px;
+            padding-bottom: 8px;
             border-bottom: 1px solid var(--border-color);
         }
         .control-group:last-child {
@@ -134,12 +166,21 @@
             padding-bottom: 0;
         }
 
+        .header-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            width: 100%;
+        }
+
         .control-title {
-            font-size: 0.9rem;
+            font-size: 0.85rem;
             color: var(--accent-color);
             text-transform: uppercase;
-            letter-spacing: 1px;
+            letter-spacing: 0.5px;
             font-weight: 700;
+            white-space: nowrap;
         }
 
         label {
@@ -249,15 +290,25 @@
 
         .flex-row {
             display: flex;
-            gap: 10px;
+            gap: 8px;
+            align-items: center;
         }
         .flex-row > * {
             flex: 1;
         }
 
-        /* Table */
+        .data-display.compact {
+            padding: 6px;
+        }
+
+        .data-display.compact .data-value {
+            font-size: 1.2rem;
+        }
+
         .table-container {
-            max-height: 150px;
+            flex: 1;
+            max-height: none;
+            min-height: 80px;
             overflow-y: auto;
             border-radius: 8px;
             border: 1px solid var(--border-color);
@@ -345,23 +396,41 @@
 <div id="container">
     <!-- Left panel for Visuals -->
     <div id="left-panel">
-        <div id="camera-container" class="glass-card">
-            <canvas id="cameraCanvas"></canvas>
-        </div>
-        
-        <div id="chart-container" class="glass-card">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                <h3 id="chart-title">檢量線 (Calibration Curve)</h3>
-                <div class="tab-buttons" style="margin: 0;">
-                    <button class="tab-btn active">檢量線</button>
-                    <button class="tab-btn">時間吸收度</button>
+        <div class="panel-row">
+            <!-- Camera Frame -->
+            <div id="camera-container" class="glass-card">
+                <div class="panel-header">
+                    <h3>攝影機畫面</h3>
+                </div>
+                <div style="flex: 1; display: flex; justify-content: center; align-items: center; overflow: hidden; background: #000;">
+                    <canvas id="cameraCanvas"></canvas>
                 </div>
             </div>
-            <div id="chart-wrapper">
-                <canvas id="chartCanvas"></canvas>
+            
+            <!-- Calibration Chart Frame -->
+            <div id="calibration-container" class="glass-card chart-container">
+                <div class="panel-header">
+                    <h3>檢量線 (Calibration Curve)</h3>
+                    <div id="chart-equation" style="color: var(--accent-color); font-size: 0.85rem; font-weight: 600;">
+                        方程式: y = mx + c | R² = 0.00
+                    </div>
+                </div>
+                <div class="chart-wrapper">
+                    <canvas id="calibrationCanvas"></canvas>
+                </div>
             </div>
-            <div id="chart-equation" style="text-align: center; color: var(--accent-color); font-size: 0.9rem; margin-top: 5px;">
-                方程式: y = mx + c | R² = 0.00
+        </div>
+        
+        <!-- Time Course Chart Frame -->
+        <div id="timecourse-container" class="glass-card chart-container">
+            <div class="panel-header">
+                <h3>隨時間測量 (Time-Course)</h3>
+                <div style="font-size: 0.85rem; color: var(--success-color);">
+                    資料點: <span id="time-points-count-left">0</span>
+                </div>
+            </div>
+            <div class="chart-wrapper">
+                <canvas id="timecourseCanvas"></canvas>
             </div>
         </div>
     </div>
@@ -372,88 +441,82 @@
 
         <!-- Camera Section -->
         <div class="control-group">
-            <div class="control-title">1. 相機設定</div>
-            <select id="cameraSelect">
-                <option value="">請點擊開啟相機以取得清單</option>
-            </select>
-            <div class="flex-row">
-                <button id="btnCamera">開啟相機</button>
+            <div class="header-row">
+                <div class="control-title">1. 相機設定</div>
+                <select id="cameraSelect" style="flex: 1; padding: 4px 8px; font-size: 0.85rem; height: 32px; margin-top: 0;">
+                    <option value="">請開啟相機</option>
+                </select>
+                <button id="btnCamera" style="padding: 4px 10px; height: 32px; font-size: 0.85rem; white-space: nowrap;">開啟</button>
             </div>
             
-            <div style="margin-top: 5px;">
-                <label style="display: flex; justify-content: space-between;">
-                    <span>取樣範圍大小</span>
-                    <span id="label-sampler-size">20px</span>
-                </label>
-                <input type="range" id="input-sampler-size" min="5" max="150" value="20">
-            </div>
-
-            <div style="font-size: 0.8rem; color: var(--text-muted); text-align: center; margin-top: 5px;">
-                提示: 點擊左側影像框拖曳十字游標選擇偵測區域
+            <div style="display: flex; align-items: center; gap: 10px; margin-top: 2px;">
+                <label style="white-space: nowrap; font-size: 0.75rem; color: var(--text-muted);">範圍</label>
+                <input type="range" id="input-sampler-size" min="5" max="150" value="20" style="flex: 1; margin: 0;">
+                <span id="label-sampler-size" style="font-size: 0.75rem; color: var(--accent-color); min-width: 35px;">20px</span>
             </div>
         </div>
 
         <!-- Blank Measurement -->
         <div class="control-group">
-            <div class="control-title">2. 空白校正 (Blank)</div>
-            <div class="data-display flex-row" style="align-items: center; justify-content: space-around; padding: 10px;">
-                <div>
-                    <div class="data-label">當前光強度 (I)</div>
-                    <div class="data-value" id="val-current-i" style="font-size: 1.2rem;">0</div>
+            <div class="header-row">
+                <div class="control-title">2. 空白校正 (Blank)</div>
+                <button id="btn-blank" style="padding: 4px 12px; height: 32px; font-size: 0.85rem; white-space: nowrap; background: rgba(0, 210, 255, 0.1); border-color: var(--accent-color);">設為空白(I₀)</button>
+            </div>
+            <div class="data-display compact flex-row" style="background: rgba(0,0,0,0.15); border: 1px solid rgba(255,255,255,0.05);">
+                <div style="text-align: center;">
+                    <div class="data-label" style="font-size: 0.65rem; margin-bottom: 0;">當前光強 (I)</div>
+                    <div class="data-value" id="val-current-i" style="font-size: 1.1rem;">0</div>
                 </div>
-                <div>
-                    <div class="data-label">空白強度 (I₀)</div>
-                    <div class="data-value" id="val-blank-i" style="font-size: 1.2rem; color: #fff;">0</div>
+                <div style="text-align: center; border-left: 1px solid rgba(255,255,255,0.1);">
+                    <div class="data-label" style="font-size: 0.65rem; margin-bottom: 0;">空白強度 (I₀)</div>
+                    <div class="data-value" id="val-blank-i" style="font-size: 1.1rem; color: #fff;">0</div>
                 </div>
             </div>
-            <button id="btn-blank">將當前位置設為空白 (I₀)</button>
         </div>
 
         <!-- Single Sample -->
         <div class="control-group">
-            <div class="control-title">3. 單一樣品測量</div>
-            <div class="data-display flex-row">
+            <div class="header-row">
+                <div class="control-title">3. 單一樣品測量</div>
+                <button id="btn-measure" class="primary" style="padding: 4px 15px; height: 32px; font-size: 0.85rem; white-space: nowrap;">量測</button>
+            </div>
+            <div class="data-display compact flex-row">
                 <div>
                     <div class="data-value" id="val-abs">0.000</div>
-                    <div class="data-label">吸收度 (Abs)</div>
+                    <div class="data-label" style="font-size: 0.65rem;">吸收度 (Abs)</div>
                 </div>
-                <div>
+                <div style="border-left: 1px solid rgba(255,255,255,0.1);">
                     <div class="data-value" id="val-trans" style="color: var(--success-color);">0.0%</div>
-                    <div class="data-label">穿透率 (%T)</div>
+                    <div class="data-label" style="font-size: 0.65rem;">穿透率 (%T)</div>
                 </div>
             </div>
-            <button id="btn-measure">手動量測一次</button>
         </div>
 
         <!-- Calibration Curve -->
         <div class="control-group">
             <div class="control-title">4. 檢量線製作 (Standard Curve)</div>
             <div class="flex-row">
-                <div style="flex: 2;">
-                    <label>已知濃度</label>
-                    <input type="number" id="input-conc" placeholder="例如: 10.0" step="0.1">
+                <div style="flex: 1.5; display: flex; align-items: center; gap: 8px;">
+                    <label style="font-size: 0.75rem; white-space: nowrap;">濃度</label>
+                    <input type="number" id="input-conc" placeholder="0.0" step="0.1" style="flex: 1; padding: 6px; font-size: 0.9rem;">
                 </div>
-                <div style="flex: 1; display:flex; align-items:flex-end;">
-                    <button id="btn-add-calib" class="primary" style="width:100%;">加入點</button>
-                </div>
+                <button id="btn-add-calib" class="primary" style="flex: 1; padding: 6px; height: 32px; font-size: 0.85rem;">加入點</button>
             </div>
-            <div class="table-container">
+            <div class="table-container" style="max-height: 120px;">
                 <table id="calib-table">
                     <thead>
                         <tr>
-                            <th>濃度 (C)</th>
-                            <th>吸收度 (A)</th>
-                            <th>操作</th>
+                            <th>濃度(C)</th>
+                            <th>吸收度(A)</th>
+                            <th></th>
                         </tr>
                     </thead>
-                    <tbody>
-                        <!-- Data injected by JS -->
-                    </tbody>
+                    <tbody></tbody>
                 </table>
             </div>
             <div class="flex-row">
-                <button id="btn-clear-calib" class="danger">清除檢量線</button>
-                <button id="btn-export-calib">匯出 CSV</button>
+                <button id="btn-clear-calib" class="danger" style="padding: 5px; font-size: 0.8rem;">清除</button>
+                <button id="btn-export-calib" style="padding: 5px; font-size: 0.8rem;">匯出</button>
             </div>
         </div>
 
@@ -461,18 +524,17 @@
         <div class="control-group">
             <div class="control-title">5. 隨時間測量 (Time-Course)</div>
             <div class="flex-row">
-                <div style="flex: 1;">
-                    <label>測量間隔 (秒)</label>
-                    <input type="number" id="input-interval" value="1.0" step="0.1" min="0.1">
+                <div style="flex: 1.5; display: flex; align-items: center; gap: 8px;">
+                    <label style="font-size: 0.75rem; white-space: nowrap;">間隔(秒)</label>
+                    <input type="number" id="input-interval" value="1.0" step="0.1" min="0.1" style="flex: 1; padding: 6px; font-size: 0.9rem;">
                 </div>
+                <button id="btn-time-start" class="success" style="flex: 1; padding: 6px; height: 32px; font-size: 0.85rem;">開始量測</button>
             </div>
-            <div class="flex-row">
-                <button id="btn-time-start" class="success">開始量測</button>
-                <button id="btn-export-time">匯出 CSV</button>
-            </div>
-            <div class="data-display" style="padding: 8px;">
-                <span class="data-label">資料點數: </span>
-                <span id="time-points-count" style="color: white; font-weight: bold;">0</span>
+            <div class="flex-row" style="justify-content: space-between;">
+                <div style="font-size: 0.75rem; color: var(--text-muted);">
+                    點數: <span id="time-points-count" style="color: white; font-weight: bold;">0</span>
+                </div>
+                <button id="btn-export-time" style="padding: 4px 10px; font-size: 0.8rem;">匯出 CSV</button>
             </div>
         </div>
     </div>
@@ -507,14 +569,15 @@
         values: { currentI: 0, I0: 1, currentAbs: 0, currentTrans: 100 },
         calibration: { points: [], slope: 0, intercept: 0, r2: 0 },
         timecourse: { active: false, data: [], intervalId: null, startTime: 0, interval: 1000 },
-        chartMode: 'calibration'
+        timecourse: { active: false, data: [], intervalId: null, startTime: 0, interval: 1000 }
     };
 
     // --- Global DOM References ---
     let cameraCanvas, cameraCtx, cameraSelect, btnCamera;
     let valCurrI, valBlankI, valAbs, valTrans;
-    let inConc, calibTableBody, chartCanvas, chartTitle, chartEq;
-    let inInterval, btnTimeStart, timePointsCount;
+    let inConc, calibTableBody, calibrationCanvas, calibrationCtx;
+    let timecourseCanvas, timecourseCtx, chartEq;
+    let inInterval, btnTimeStart, timePointsCount, timePointsCountLeft;
 
     function bindDOMElements() {
         vlog("Binding DOM elements...");
@@ -523,18 +586,10 @@
         if (cameraCanvas) {
             cameraCtx = cameraCanvas.getContext('2d', { alpha: false });
             vlog("Camera canvas found and context created");
-        } else {
-            vlog("ERROR: cameraCanvas not found!");
         }
         
         cameraSelect = document.getElementById('cameraSelect');
         btnCamera = document.getElementById('btnCamera');
-        
-        if (btnCamera) {
-            vlog("Camera button found");
-        } else {
-            vlog("ERROR: btnCamera not found!");
-        }
         
         valCurrI = document.getElementById('val-current-i');
         valBlankI = document.getElementById('val-blank-i');
@@ -544,17 +599,21 @@
         inConc = document.getElementById('input-conc');
         calibTableBody = document.querySelector('#calib-table tbody');
         
-        chartCanvas = document.getElementById('chartCanvas');
-        chartTitle = document.getElementById('chart-title');
+        calibrationCanvas = document.getElementById('calibrationCanvas');
+        if (calibrationCanvas) calibrationCtx = calibrationCanvas.getContext('2d');
+        
+        timecourseCanvas = document.getElementById('timecourseCanvas');
+        if (timecourseCanvas) timecourseCtx = timecourseCanvas.getContext('2d');
+        
         chartEq = document.getElementById('chart-equation');
         
         inInterval = document.getElementById('input-interval');
         btnTimeStart = document.getElementById('btn-time-start');
         timePointsCount = document.getElementById('time-points-count');
+        timePointsCountLeft = document.getElementById('time-points-count-left');
 
         if (!cameraCanvas || !btnCamera) {
             vlog("CRITICAL: UI Elements missing!");
-            alert("錯誤：找不到必要的UI元素，請檢查HTML結構");
         } else {
             vlog("DOM elements bound successfully.");
         }
@@ -581,7 +640,7 @@
                      cameraCtx.fillText('請開啟相機', cameraCanvas.width/2, cameraCanvas.height/2);
                  }
             }
-            drawChart();
+            drawAllCharts();
         } catch (e) {
             console.error("Render loop error:", e);
         }
@@ -751,7 +810,6 @@
             state.timecourse.data = [];
             state.timecourse.startTime = Date.now();
             state.timecourse.interval = iv * 1000;
-            switchChartMode('timecourse');
             state.timecourse.intervalId = setInterval(timeCourseTick, state.timecourse.interval);
             state.timecourse.active = true;
             btnTimeStart.textContent = '停止量測';
@@ -763,7 +821,8 @@
         updateSingleMeasurement();
         const t = (Date.now() - state.timecourse.startTime) / 1000;
         state.timecourse.data.push({t: t, a: state.values.currentAbs});
-        timePointsCount.textContent = state.timecourse.data.length;
+        if (timePointsCount) timePointsCount.textContent = state.timecourse.data.length;
+        if (timePointsCountLeft) timePointsCountLeft.textContent = state.timecourse.data.length;
     }
 
     // --- Camera Control (from combined_spec_analy.html - known working) ---
@@ -896,8 +955,8 @@
             w = h * vRatio; 
         }
         
-        cameraCanvas.width = Math.max(w * 0.95, 100);
-        cameraCanvas.height = Math.max(h * 0.95, 100);
+        cameraCanvas.width = Math.max(w, 100);
+        cameraCanvas.height = Math.max(h, 100);
     }
 
     // --- Interaction ---
@@ -929,30 +988,44 @@
         document.getElementById('label-sampler-size').textContent = val + 'px';
     }
 
-    // --- Custom Canvas Charts (No Chart.js) ---
-    function switchChartMode(mode) {
-        state.chartMode = mode;
-        const btns = document.querySelectorAll('.tab-btn');
-        btns[0].classList.toggle('active', mode === 'calibration');
-        btns[1].classList.toggle('active', mode === 'timecourse');
-        chartTitle.textContent = mode === 'calibration' ? '檢量線 (Calibration Curve)' : '時間吸收度 (Time-Course)';
-        chartEq.style.display = mode === 'calibration' ? 'block' : 'none';
+    function drawAllCharts() {
+        if (calibrationCtx && calibrationCanvas) {
+            drawGenericChart(calibrationCtx, calibrationCanvas, 'calibration');
+        }
+        if (timecourseCtx && timecourseCanvas) {
+            drawGenericChart(timecourseCtx, timecourseCanvas, 'timecourse');
+        }
     }
 
-    function drawChart() {
-        const ctx = chartCanvas.getContext('2d');
-        const w = chartCanvas.width = chartCanvas.parentElement.clientWidth;
-        const h = chartCanvas.height = chartCanvas.parentElement.clientHeight;
+    function drawGenericChart(ctx, canvas, mode) {
+        const w = canvas.width = canvas.parentElement.clientWidth;
+        const h = canvas.height = canvas.parentElement.clientHeight;
+        
+        if (w === 0 || h === 0) return;
         
         ctx.clearRect(0, 0, w, h);
         
-        const padding = { top: 20, right: 30, bottom: 40, left: 50 };
+        const padding = { top: 30, right: 30, bottom: 55, left: 65 };
         const graphW = w - padding.left - padding.right;
         const graphH = h - padding.top - padding.bottom;
         
-        // Draw axes
+        if (graphW <= 0 || graphH <= 0) return;
+
+        // Draw background grid
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+        ctx.setLineDash([]);
+        for(let i=0; i<=5; i++) {
+            const y = padding.top + graphH - (i/5) * graphH;
+            ctx.beginPath(); ctx.moveTo(padding.left, y); ctx.lineTo(padding.left + graphW, y); ctx.stroke();
+        }
+        for(let i=0; i<=5; i++){
+            const x = padding.left + (i/5 * graphW);
+            ctx.beginPath(); ctx.moveTo(x, padding.top); ctx.lineTo(x, padding.top + graphH); ctx.stroke();
+        }
+
+        // Draw main axes
         ctx.strokeStyle = '#8c97a7';
-        ctx.lineWidth = 1;
+        ctx.lineWidth = 1.5;
         ctx.beginPath();
         ctx.moveTo(padding.left, padding.top);
         ctx.lineTo(padding.left, padding.top + graphH);
@@ -961,7 +1034,7 @@
         
         // Axis labels (Common Y axis: Absorbance)
         ctx.fillStyle = '#8c97a7';
-        ctx.font = '12px Inter, sans-serif';
+        ctx.font = '11px Inter, sans-serif';
         ctx.textAlign = 'right';
         ctx.textBaseline = 'middle';
         for(let i=0; i<=5; i++) {
@@ -970,10 +1043,28 @@
             ctx.fillText(val, padding.left - 8, y);
             ctx.beginPath();ctx.moveTo(padding.left-4, y);ctx.lineTo(padding.left, y);ctx.stroke();
         }
+
+        // Axis Titles
+        ctx.save();
+        ctx.translate(15, padding.top + graphH / 2);
+        ctx.rotate(-Math.PI / 2);
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#8c97a7';
+        ctx.font = 'bold 12px Inter, sans-serif';
+        ctx.fillText('吸收度 (Abs.)', 0, 0);
+        ctx.restore();
+
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#8c97a7';
+        ctx.font = 'bold 12px Inter, sans-serif';
+        const xTitle = mode === 'calibration' ? '濃度 (Conc.)' : '時間 (Time, s)';
+        ctx.fillText(xTitle, padding.left + graphW/2, padding.top + graphH + 40);
         
-        if (state.chartMode === 'calibration') {
+        if (mode === 'calibration') {
+            ctx.font = '11px Inter, sans-serif'; // reset font for drawing axis ticks below
             drawCalibrationChart(ctx, padding, graphW, graphH);
         } else {
+            ctx.font = '11px Inter, sans-serif';
             drawTimeCourseChart(ctx, padding, graphW, graphH);
         }
     }
@@ -1075,9 +1166,6 @@
         document.getElementById('btn-export-calib').addEventListener('click', () => exportCSV('calibration'));
         btnTimeStart.addEventListener('click', toggleTimeCourse);
         document.getElementById('btn-export-time').addEventListener('click', () => exportCSV('timecourse'));
-        const tabs = document.querySelectorAll('.tab-btn');
-        tabs[0].addEventListener('click', () => switchChartMode('calibration'));
-        tabs[1].addEventListener('click', () => switchChartMode('timecourse'));
         
         vlog("All event listeners set up");
     }
