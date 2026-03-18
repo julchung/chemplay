@@ -1,0 +1,156 @@
+:root {
+    --bg-color: #1e1e1e;
+    --text-color: #ffffff;
+    --accent-color: #00d2ff;
+}
+
+* {
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: none;
+}
+
+html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    background-color: #121212;
+    color: var(--text-color);
+    font-family: 'Noto Sans TC', sans-serif;
+    overflow: hidden;
+    position: fixed; /* Prevent scrolling on iOS */
+}
+
+#game-container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    background-color: var(--bg-color);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+canvas {
+    display: block;
+    max-width: 100%;
+    max-height: 100%;
+    background-color: #1e1e1e;
+    box-shadow: 0 0 20px rgba(0,0,0,0.5);
+}
+
+#ui-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 50px;
+    pointer-events: none;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 15px;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(5px);
+    z-index: 10;
+    border-bottom: 2px solid #444;
+}
+
+#ui-layer > div {
+    font-size: 18px;
+    font-weight: bold;
+    text-shadow: 1px 1px 2px black;
+}
+
+#level-title {
+    color: #ffd700;
+    font-size: 20px;
+}
+
+.overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.9);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 20;
+    padding: 20px;
+    text-align: center;
+}
+
+.hidden {
+    display: none !important;
+}
+
+h1 {
+    font-size: 32px;
+    margin-bottom: 15px;
+    color: #ffd700;
+    text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+}
+
+.instructions {
+    margin-bottom: 30px;
+    line-height: 1.6;
+    color: #ddd;
+    font-size: 16px;
+}
+
+button {
+    padding: 12px 35px;
+    font-size: 20px;
+    font-family: 'Noto Sans TC', sans-serif;
+    background: linear-gradient(135deg, #00b09b, #96c93d);
+    color: white;
+    border: none;
+    border-radius: 50px;
+    cursor: pointer;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    transition: transform 0.1s;
+}
+
+button:active {
+    transform: scale(0.95);
+}
+
+#reset-container {
+    position: absolute;
+    bottom: 15px;
+    right: 15px;
+    z-index: 15;
+}
+
+#reset-btn {
+    padding: 8px 15px;
+    font-size: 14px;
+    background: rgba(102, 102, 102, 0.7);
+    border: 1px solid #888;
+}
+
+/* Portrait check - Only for mobile */
+@media screen and (orientation: landscape) {
+    body.is-mobile #start-screen::after {
+        content: "請將您的裝置轉為直式以獲得最佳遊戲體驗。";
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: #121212;
+        color: white;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 100;
+        font-size: 20px;
+    }
+}

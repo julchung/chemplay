@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>分光儀與光度計實驗系統</title>
+    <title>化學遊樂園</title>
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;700&family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
     <style>
@@ -41,7 +41,7 @@
         }
 
         .container {
-            max-width: 900px;
+            max-width: 1200px;
             width: 100%;
             text-align: center;
             z-index: 10;
@@ -71,8 +71,8 @@
 
         .tools-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-            gap: 24px;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
             margin-top: 40px;
         }
 
@@ -108,6 +108,24 @@
 
         .spec-card { --accent: var(--accent-1); }
         .photo-card { --accent: var(--accent-2); }
+        .bubble-card { --accent: #ff6b6b; }
+
+        .empty-card {
+            opacity: 0.3;
+            pointer-events: none;
+            cursor: default;
+        }
+
+        .empty-card .icon-box {
+            background: rgba(255, 255, 255, 0.02);
+            font-size: 24px;
+            color: rgba(255, 255, 255, 0.2);
+        }
+
+        .empty-card h2 {
+            color: rgba(255, 255, 255, 0.3);
+            font-size: 1.2rem;
+        }
 
         .tool-card:hover {
             transform: translateY(-8px);
@@ -182,6 +200,10 @@
             to { opacity: 1; }
         }
 
+        @media (max-width: 1024px) {
+            .tools-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+
         @media (max-width: 640px) {
             h1 { font-size: 2.2rem; }
             .tools-grid { grid-template-columns: 1fr; }
@@ -191,8 +213,8 @@
 <body>
     <div class="container">
         <header>
-            <h1>分光儀與光度計工具箱</h1>
-            <p class="subtitle">為行動裝置與教學環境設計的行動科學實驗平台</p>
+            <h1>化學遊樂園</h1>
+            <p class="subtitle">為行動裝置與教學環境設計的互動科學實驗與遊戲平台</p>
         </header>
 
         <div class="tools-grid">
@@ -213,6 +235,46 @@
                 </p>
                 <span class="btn">立即開啟</span>
             </a>
+
+            <a href="bubblegame/index.html" class="tool-card bubble-card">
+                <div class="icon-box">🫧</div>
+                <h2>離子泡泡龍</h2>
+                <p class="description">
+                    趣味互動遊戲，帶領學生在挑戰中探索離子世界的奧秘與科學規律。
+                </p>
+                <span class="btn">進入遊戲</span>
+            </a>
+
+            <!-- Placeholder Slots -->
+            <div class="tool-card empty-card">
+                <div class="icon-box"></div>
+                <h2>空</h2>
+                <p class="description"></p>
+            </div>
+
+            <div class="tool-card empty-card">
+                <div class="icon-box"></div>
+                <h2>空</h2>
+                <p class="description"></p>
+            </div>
+
+            <div class="tool-card empty-card">
+                <div class="icon-box"></div>
+                <h2>空</h2>
+                <p class="description"></p>
+            </div>
+
+            <div class="tool-card empty-card">
+                <div class="icon-box"></div>
+                <h2>空</h2>
+                <p class="description"></p>
+            </div>
+
+            <div class="tool-card empty-card">
+                <div class="icon-box"></div>
+                <h2>空</h2>
+                <p class="description"></p>
+            </div>
         </div>
 
         <footer>

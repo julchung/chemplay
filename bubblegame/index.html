@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Chemical Bubble Shooter - Mobile Optimized</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&display=swap" rel="stylesheet">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+</head>
+<body>
+    <div id="game-container">
+        <!-- Header / UI Layer -->
+        <div id="ui-layer">
+            <div id="score-board">Score: <span id="score">0</span></div>
+            <div id="level-title">第 <span id="level">1</span> 關</div>
+            <div id="timer">Time: <span id="time">00:00</span></div>
+        </div>
+
+        <!-- Game Canvas -->
+        <canvas id="gameCanvas"></canvas>
+
+        <!-- Overlays -->
+        <div id="start-screen" class="overlay">
+            <h1>Chemical Bubble Shooter</h1>
+            <div class="instructions">
+                <h2>遊戲說明:</h2>
+                <p>手指左右滑動調整角度</p>
+                <p>點擊正中間砲台發射</p>
+                <p>當上方離子組合成難溶於水之離子</p>
+                <p>完整化合物時，則消去該些粒子。</p>
+            </div>
+            <button id="start-btn">開始遊戲</button>
+        </div>
+
+        <div id="game-over-screen" class="overlay hidden">
+            <h1 style="color: #ff3333;">GAME OVER</h1>
+            <button id="restart-btn">重試</button>
+        </div>
+
+        <div id="win-screen" class="overlay hidden">
+            <h1 style="color: #33ff33;">YOU WIN!</h1>
+            <div id="win-time">Time: 00:00</div>
+            <button id="next-level-btn">下一關</button>
+        </div>
+        
+        <div id="reset-container">
+            <button id="reset-btn">Reset</button>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
