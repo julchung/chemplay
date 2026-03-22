@@ -1,0 +1,863 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>酸鹼滴定曲線模擬器</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+:root{
+  --bg:#0b0f1e;
+  --surface:rgba(255,255,255,.06);
+  --border:rgba(255,255,255,.1);
+  --text:#f1f5f9;
+  --muted:#94a3b8;
+  --accent:#818cf8;
+  --accent2:#c084fc;
+  --btn:#6366f1;
+  --r-lg:1.25rem;
+  --r-md:.75rem;
+  --shadow:0 8px 32px rgba(0,0,0,.5);
+}
+body{
+  font-family:'Inter',sans-serif;
+  background:linear-gradient(140deg,#0b0f1e 0%,#1e1b4b 100%);
+  color:var(--text);
+  min-height:100vh;
+  line-height:1.6;
+}
+.app{display:flex;flex-direction:column;min-height:100vh}
+/* Header */
+.hdr{
+  background:rgba(15,20,50,.75);
+  backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--border);
+  position:sticky;top:0;z-index:100;
+}
+.hdr-inner{
+  max-width:1280px;margin:0 auto;
+  padding:.9rem 1.25rem;
+  display:flex;align-items:center;justify-content:space-between;gap:1rem;
+}
+.brand{display:flex;align-items:center;gap:.75rem}
+.brand-icon{font-size:1.75rem}
+.brand h1{
+  font-family:'Outfit',sans-serif;font-size:1.35rem;
+  background:linear-gradient(90deg,var(--accent),var(--accent2));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+}
+.subtitle{font-size:.75rem;color:var(--muted)}
+#status{
+  font-size:.8rem;padding:.35rem .85rem;border-radius:999px;
+  background:rgba(129,140,248,.15);border:1px solid rgba(129,140,248,.3);
+  color:var(--accent);white-space:nowrap;
+}
+/* Grid */
+.grid{
+  max-width:1280px;margin:0 auto;
+  padding:1.5rem 1.25rem;
+  display:grid;grid-template-columns:340px 1fr;gap:1.25rem;
+  flex:1;
+}
+/* Glass panel */
+.glass{
+  background:var(--surface);
+  backdrop-filter:blur(10px);
+  border:1px solid var(--border);
+  border-radius:var(--r-lg);
+  box-shadow:var(--shadow);
+}
+.panel{padding:1.25rem;display:flex;flex-direction:column;gap:.9rem;align-self:start}
+.sec-title{
+  font-family:'Outfit',sans-serif;font-size:1.05rem;
+  border-bottom:1px solid var(--border);padding-bottom:.5rem;margin-bottom:.25rem;
+}
+/* Fields */
+.lbl{display:block;font-size:.8rem;color:var(--muted);margin-bottom:.35rem}
+.fld{display:flex;flex-direction:column}
+.sel-wrap{position:relative}
+.sel-wrap::after{
+  content:'▾';position:absolute;right:.85rem;top:50%;transform:translateY(-50%);
+  pointer-events:none;color:var(--muted);font-size:.9rem;
+}
+select,input[type=number],input[type=text]{
+  width:100%;padding:.65rem .85rem;
+  background:rgba(0,0,0,.25);
+  border:1px solid var(--border);border-radius:var(--r-md);
+  color:var(--text);font-size:.9rem;outline:none;
+  transition:border-color .18s;appearance:none;-webkit-appearance:none;
+}
+select:focus,input:focus{border-color:var(--accent)}
+select{padding-right:2rem}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:.75rem}
+.ka-box{
+  background:rgba(0,0,0,.15);border:1px solid var(--border);
+  border-radius:var(--r-md);padding:.85rem;
+  display:flex;flex-direction:column;gap:.65rem;
+}
+.ka-title{font-size:.78rem;color:var(--muted);font-weight:600;margin-bottom:.15rem}
+.ka-row{display:flex;align-items:center;gap:.5rem}
+.ka-lbl{font-size:.88rem;color:var(--text);white-space:nowrap;min-width:2.8rem;font-weight:500}
+.ka-row input{flex:1}
+.hidden{display:none!important}
+/* Presets */
+.preset-row{display:flex;flex-wrap:wrap;gap:.4rem}
+.preset-btn{
+  padding:.3rem .65rem;font-size:.78rem;border-radius:999px;
+  border:1px solid var(--border);background:rgba(129,140,248,.1);
+  color:var(--text);cursor:pointer;transition:background .15s,border-color .15s;
+}
+.preset-btn:hover{background:rgba(129,140,248,.25);border-color:var(--accent)}
+/* Buttons */
+.action-stack{display:flex;flex-direction:column;gap:.6rem;margin-top:.25rem}
+.btn-primary{
+  padding:.8rem;border:none;border-radius:var(--r-md);
+  background:var(--btn);color:#fff;font-size:1rem;font-weight:700;
+  cursor:pointer;letter-spacing:.025em;transition:background .18s,transform .1s;
+}
+.btn-primary:hover{background:#4f46e5}
+.btn-primary:active{transform:scale(.97)}
+.exp-row{display:grid;grid-template-columns:1fr 1fr;gap:.5rem}
+.btn-sec{
+  padding:.6rem;border:1px solid var(--border);border-radius:var(--r-md);
+  background:rgba(255,255,255,.06);color:var(--text);font-size:.85rem;
+  cursor:pointer;transition:background .15s;
+}
+.btn-sec:hover:not(:disabled){background:rgba(255,255,255,.12)}
+.btn-sec:disabled{opacity:.45;cursor:not-allowed}
+/* Display area */
+.display{display:flex;flex-direction:column;gap:1.25rem}
+.card{padding:1.25rem}
+.chart-hdr{margin-bottom:.65rem}
+.chart-t{font-family:'Outfit',sans-serif;font-size:1.05rem;display:block}
+.chart-sub{font-size:.8rem;color:var(--muted)}
+.zone-legend{display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.75rem}
+.zone-chip{
+  font-size:.72rem;padding:.2rem .6rem;border-radius:999px;
+  background:var(--clr);border:1px solid rgba(255,255,255,.1);
+}
+.chart-wrap{position:relative;height:380px}
+/* EQ info */
+.eq-info h3{font-size:.95rem;margin-bottom:.75rem}
+.eq-grid{display:flex;flex-wrap:wrap;gap:.6rem}
+.eq-chip{
+  background:rgba(129,140,248,.12);border:1px solid rgba(129,140,248,.3);
+  border-radius:var(--r-md);padding:.5rem .85rem;font-size:.82rem;line-height:1.5;
+}
+.eq-chip strong{color:var(--accent)}
+/* Table */
+.t-hd{font-size:.95rem;margin-bottom:.75rem}
+.t-wrap{max-height:220px;overflow-y:auto;border-radius:var(--r-md);background:rgba(0,0,0,.2)}
+table{width:100%;border-collapse:collapse;font-size:.82rem}
+th,td{padding:.55rem .75rem;text-align:center;border-bottom:1px solid var(--border)}
+th{background:rgba(0,0,0,.4);position:sticky;top:0;font-weight:600;font-size:.78rem;color:var(--muted)}
+td.empty{color:var(--muted);font-style:italic;padding:1.5rem}
+/* Footer */
+.footer{
+  text-align:center;padding:1rem;font-size:.78rem;color:var(--muted);
+  border-top:1px solid var(--border);margin-top:auto;
+}
+/* Error toast */
+.err-toast{
+  display:none;position:fixed;bottom:1.5rem;right:1.5rem;z-index:999;
+  background:#ef4444;color:#fff;padding:.75rem 1.25rem;border-radius:.75rem;
+  font-size:.88rem;max-width:360px;box-shadow:0 4px 20px rgba(0,0,0,.4);
+}
+/* Responsive */
+@media(max-width:860px){
+  .grid{grid-template-columns:1fr;padding:1rem}
+  .chart-wrap{height:300px}
+  .brand h1{font-size:1.1rem}
+  #status{display:none}
+}
+@media(max-width:480px){
+  .hdr-inner{padding:.75rem}
+  .brand-icon{font-size:1.4rem}
+  .chart-wrap{height:250px}
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- Header -->
+<header class="hdr">
+  <div class="hdr-inner">
+    <div class="brand">
+      <span class="brand-icon">⚗️</span>
+      <div>
+        <h1>酸鹼滴定曲線模擬器</h1>
+        <p class="subtitle">電荷平衡 · 數值求解 · 支援一/二/三元酸</p>
+      </div>
+    </div>
+    <div id="status">請設定參數後點擊「開始計算」</div>
+  </div>
+</header>
+
+<!-- Grid -->
+<main class="grid">
+
+  <!-- Control Panel -->
+  <aside class="panel glass">
+    <h2 class="sec-title">⚙️ 實驗設定</h2>
+
+    <div class="fld">
+      <label class="lbl" for="acid-type">酸的類型</label>
+      <div class="sel-wrap">
+        <select id="acid-type">
+          <option value="monoprotic">一元酸（Monoprotic）</option>
+          <option value="diprotic">二元酸（Diprotic）</option>
+          <option value="triprotic">三元酸（Triprotic）</option>
+        </select>
+      </div>
+    </div>
+
+    <div id="ka-section" class="ka-box">
+      <div class="ka-title">解離常數（100% 解離請輸入 SB）</div>
+      <div class="ka-row" id="ka1-row">
+        <label class="ka-lbl" for="ka1">Ka₁</label>
+        <input type="text" id="ka1" value="1.8e-5" placeholder="輸入數值或 SB">
+      </div>
+      <div class="ka-row hidden" id="ka2-row">
+        <label class="ka-lbl" for="ka2">Ka₂</label>
+        <input type="text" id="ka2" value="" placeholder="輸入數值或 SB">
+      </div>
+      <div class="ka-row hidden" id="ka3-row">
+        <label class="ka-lbl" for="ka3">Ka₃</label>
+        <input type="text" id="ka3" value="" placeholder="輸入數值">
+      </div>
+    </div>
+
+    <div class="two">
+      <div class="fld">
+        <label class="lbl" for="acid-conc">酸濃度 (M)</label>
+        <input type="number" id="acid-conc" value="0.1" min="0.001" step="0.01">
+      </div>
+      <div class="fld">
+        <label class="lbl" for="acid-vol">酸體積 (mL)</label>
+        <input type="number" id="acid-vol" value="25" min="1" step="1">
+      </div>
+    </div>
+
+    <div class="fld">
+      <label class="lbl" for="base-conc">強鹼 NaOH 濃度 (M)</label>
+      <input type="number" id="base-conc" value="0.1" min="0.001" step="0.01">
+    </div>
+
+    <div class="fld">
+      <label class="lbl">快速範例</label>
+      <div class="preset-row">
+        <button class="preset-btn" data-preset="acetic">醋酸</button>
+        <button class="preset-btn" data-preset="oxalic">草酸</button>
+        <button class="preset-btn" data-preset="phosphoric">磷酸</button>
+        <button class="preset-btn" data-preset="carbonic">碳酸</button>
+        <button class="preset-btn" data-preset="hcl">鹽酸</button>
+      </div>
+    </div>
+
+    <div class="action-stack">
+      <button id="calc-btn" class="btn-primary">▶ 開始計算</button>
+      <div class="exp-row">
+        <button id="img-btn" class="btn-sec" disabled>📷 匯出圖片</button>
+        <button id="csv-btn" class="btn-sec" disabled>📊 匯出 CSV</button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Display Area -->
+  <section class="display">
+
+    <!-- Chart -->
+    <div class="card glass">
+      <div class="chart-hdr">
+        <span class="chart-t" id="chart-title">滴定曲線</span>
+        <span class="chart-sub" id="chart-sub">設定實驗條件後點擊「開始計算」</span>
+      </div>
+      <div class="zone-legend">
+        <span class="zone-chip" style="--clr:rgba(220,38,38,.22)">酸性 pH 0–5</span>
+        <span class="zone-chip" style="--clr:rgba(250,204,21,.2)">中性 pH 5–9</span>
+        <span class="zone-chip" style="--clr:rgba(99,102,241,.22)">鹼性 pH 9–14</span>
+        <span class="zone-chip" style="--clr:rgba(244,114,182,.3)">✕ 當量點</span>
+      </div>
+      <div class="chart-wrap">
+        <canvas id="myChart"></canvas>
+      </div>
+    </div>
+
+    <!-- EQ Points -->
+    <div id="eq-card" class="card glass hidden">
+      <h3 class="t-hd">📍 當量點資訊</h3>
+      <div id="eq-grid" class="eq-grid"></div>
+    </div>
+
+    <!-- Data Table -->
+    <div class="card glass">
+      <h3 class="t-hd">📋 滴定數據記錄</h3>
+      <div class="t-wrap">
+        <table>
+          <thead>
+            <tr><th>加入體積 (mL)</th><th>pH 值</th><th>[H⁺] (M)</th></tr>
+          </thead>
+          <tbody id="tbody">
+            <tr><td class="empty" colspan="3">尚無數據</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </section>
+</main>
+
+<footer class="footer">
+  酸鹼滴定曲線模擬器 · 使用電荷平衡方程式 + 二分法數值求解 · 適用各類行動裝置
+</footer>
+</div>
+
+<!-- Error Toast -->
+<div id="err-toast" class="err-toast"></div>
+
+<script>
+// ═══════════════════════════════════════════
+//  TITRATION ENGINE
+//  (電荷平衡 + 二分法，任何滴定點均可精確計算)
+// ═══════════════════════════════════════════
+(function() {
+  var Kw = 1e-14;
+
+  function chargeBalance(h, Ca, Cb, ka1, ka2, ka3) {
+    var oh = Kw / h;
+    var alphaSum;
+    if (ka1 > 0 && ka2 === 0) {
+      // 一元酸
+      var D = h + ka1;
+      alphaSum = ka1 / D;
+    } else if (ka1 > 0 && ka2 > 0 && ka3 === 0) {
+      // 二元酸
+      var D = h * h + ka1 * h + ka1 * ka2;
+      alphaSum = (ka1 * h / D) + 2 * (ka1 * ka2 / D);
+    } else if (ka1 > 0 && ka2 > 0 && ka3 > 0) {
+      // 三元酸
+      var D = h*h*h + ka1*h*h + ka1*ka2*h + ka1*ka2*ka3;
+      alphaSum = (ka1*h*h/D) + 2*(ka1*ka2*h/D) + 3*(ka1*ka2*ka3/D);
+    } else {
+      alphaSum = 0;
+    }
+    return h + Cb - oh - Ca * alphaSum;
+  }
+
+  function bisect(f) {
+    var phLo = -1.0, phHi = 15.0;
+    var fLo = f(Math.pow(10, -phLo));
+    var fHi = f(Math.pow(10, -phHi));
+    if (fLo * fHi > 0) return null;
+    for (var i = 0; i < 150; i++) {
+      var phMid = (phLo + phHi) / 2;
+      var hMid  = Math.pow(10, -phMid);
+      var fMid  = f(hMid);
+      if (Math.abs(fMid) < 1e-12 || (phHi - phLo) < 1e-10) return hMid;
+      if (fLo * fMid < 0) { phHi = phMid; fHi = fMid; }
+      else                 { phLo = phMid; fLo = fMid; }
+    }
+    return Math.pow(10, -(phLo + phHi) / 2);
+  }
+
+  window.TitrationEngine = {
+    // 計算整條滴定曲線數據
+    calculate: function(params) {
+      var acidType     = params.acidType;
+      var acidStrength = params.acidStrength;
+      var acidConc     = params.acidConc;
+      var acidVol      = params.acidVol;
+      var baseConc     = params.baseConc;
+      var kaValues     = params.kaValues;
+
+      var eqVol = acidConc * acidVol / baseConc;
+      var maxFactor = 2.1;
+      if (acidType === 'diprotic')  maxFactor = 3.1;
+      if (acidType === 'triprotic') maxFactor = 4.1;
+
+      var maxVol   = eqVol * maxFactor;
+      var steps    = 400;
+      var stepSize = maxVol / steps;
+
+      var ka1, ka2, ka3;
+      if (acidStrength === 'strong') {
+        ka1 = 1e8;
+        ka2 = (acidType === 'triprotic' || acidType === 'diprotic') ? 1e8 : 0;
+        ka3 = (acidType === 'triprotic') ? 1e8 : 0;
+      } else {
+        ka1 = kaValues[0] || 0;
+        ka2 = (acidType !== 'monoprotic') ? (kaValues[1] || 0) : 0;
+        ka3 = (acidType === 'triprotic')  ? (kaValues[2] || 0) : 0;
+      }
+
+      var results = [];
+      var volumes = [];
+      for (var i = 0; i <= steps; i++) volumes.push(i * stepSize);
+      var eqVols2 = [eqVol];
+      if (acidType === 'diprotic')  eqVols2.push(2 * eqVol);
+      if (acidType === 'triprotic') eqVols2.push(2 * eqVol, 3 * eqVol);
+      eqVols2.forEach(function(v) {
+        if (!volumes.some(function(u) { return Math.abs(u - v) < 0.0001; })) volumes.push(v);
+      });
+      volumes.sort(function(a, b) { return a - b; });
+
+      for (var ii = 0; ii < volumes.length; ii++) {
+        var pt = this._calcPt(volumes[ii], acidStrength, acidType, acidConc, acidVol, baseConc, ka1, ka2, ka3);
+        if (pt) results.push(pt);
+      }
+      return results;
+    },
+
+    // 單點計算：給定體積，返回 {volume, pH, hPlus}
+    calcAt: function(vBase, params) {
+      var acidStrength = params.acidStrength;
+      var acidType     = params.acidType;
+      var acidConc     = params.acidConc;
+      var acidVol      = params.acidVol;
+      var baseConc     = params.baseConc;
+      var kaValues     = params.kaValues;
+      var ka1, ka2, ka3;
+      if (acidStrength === 'strong') {
+        ka1 = 1e8;
+        ka2 = (acidType === 'triprotic' || acidType === 'diprotic') ? 1e8 : 0;
+        ka3 = (acidType === 'triprotic') ? 1e8 : 0;
+      } else {
+        ka1 = kaValues[0] || 0;
+        ka2 = (acidType !== 'monoprotic') ? (kaValues[1] || 0) : 0;
+        ka3 = (acidType === 'triprotic')  ? (kaValues[2] || 0) : 0;
+      }
+      return this._calcPt(vBase, acidStrength, acidType, acidConc, acidVol, baseConc, ka1, ka2, ka3);
+    },
+
+    // 內部單點計算
+    _calcPt: function(vBase, acidStrength, acidType, acidConc, acidVol, baseConc, ka1, ka2, ka3) {
+      var Vt = acidVol + vBase;
+      var Cb = (baseConc * vBase) / Vt;
+      var Ca = (acidConc * acidVol) / Vt;
+      var h;
+      if (acidStrength === 'strong' && acidType === 'monoprotic') {
+        var excess = Cb - Ca;
+        if (excess < -1e-15) {
+          var CA = -excess;
+          h = 0.5 * (CA + Math.sqrt(CA * CA + 4 * Kw));
+        } else if (excess > 1e-15) {
+          var CB = excess;
+          var oh = 0.5 * (CB + Math.sqrt(CB * CB + 4 * Kw));
+          h = Kw / oh;
+        } else {
+          h = Math.sqrt(Kw);
+        }
+      } else {
+        var _Ca = Ca, _Cb = Cb, _k1 = ka1, _k2 = ka2, _k3 = ka3;
+        h = bisect(function(hh) { return chargeBalance(hh, _Ca, _Cb, _k1, _k2, _k3); });
+      }
+      if (h === null || h <= 0 || isNaN(h)) return null;
+      var pH = -Math.log10(h);
+      if (isNaN(pH) || pH < -1 || pH > 15) return null;
+      return {
+        volume: parseFloat(vBase.toFixed(4)),
+        pH:     parseFloat(pH.toFixed(3)),
+        hPlus:  h.toExponential(4)
+      };
+    }
+  };
+})();
+
+// ═══════════════════════════════════════════
+//  APPLICATION
+// ═══════════════════════════════════════════
+(function() {
+
+var chartInst  = null;
+var titData    = [];
+
+// Presets（強酸 Ka 欄位輸入 SB）
+var PRESETS = {
+  acetic:     { acidType:'monoprotic', acidConc:0.1, acidVol:25, baseConc:0.1, ka1:'1.8e-5',  ka2:'',        ka3:'' },
+  oxalic:     { acidType:'diprotic',   acidConc:0.1, acidVol:25, baseConc:0.1, ka1:'5.36e-2', ka2:'5.37e-5', ka3:'' },
+  carbonic:   { acidType:'diprotic',   acidConc:0.1, acidVol:25, baseConc:0.1, ka1:'4.3e-7',  ka2:'4.7e-11', ka3:'' },
+  phosphoric: { acidType:'triprotic',  acidConc:0.1, acidVol:25, baseConc:0.1, ka1:'7.5e-3',  ka2:'6.2e-8',  ka3:'3.6e-13' },
+  hcl:        { acidType:'monoprotic', acidConc:0.1, acidVol:25, baseConc:0.1, ka1:'SB',      ka2:'',        ka3:'' }
+};
+
+function $(id) { return document.getElementById(id); }
+
+// 判斷是否為強酸（Ka 輸入 SB 表示 100% 解離）
+function isStrong(kaStr) {
+  return typeof kaStr === 'string' && kaStr.trim().toUpperCase() === 'SB';
+}
+
+function syncKa() {
+  var type = $('acid-type').value;
+  $('ka2-row').classList.toggle('hidden', type === 'monoprotic');
+  $('ka3-row').classList.toggle('hidden', type !== 'triprotic');
+}
+
+function setPreset(key) {
+  var p = PRESETS[key];
+  if (!p) return;
+  $('acid-type').value = p.acidType;
+  $('acid-conc').value = p.acidConc;
+  $('acid-vol').value  = p.acidVol;
+  $('base-conc').value = p.baseConc;
+  $('ka1').value = p.ka1;
+  $('ka2').value = p.ka2;
+  $('ka3').value = p.ka3;
+  syncKa();
+}
+
+function showErr(msg) {
+  var toast = $('err-toast');
+  toast.textContent = '❌ ' + msg;
+  toast.style.display = 'block';
+  setTimeout(function() { toast.style.display = 'none'; }, 4000);
+}
+
+function run() {
+  try {
+    var acidType = $('acid-type').value;
+    var acidConc = parseFloat($('acid-conc').value);
+    var acidVol  = parseFloat($('acid-vol').value);
+    var baseConc = parseFloat($('base-conc').value);
+
+    if (!acidConc || !acidVol || !baseConc || isNaN(acidConc) || isNaN(acidVol) || isNaN(baseConc)) {
+      showErr('請填入有效的濃度與體積數值'); return;
+    }
+
+    var ka1Str = $('ka1').value.trim();
+    var ka2Str = $('ka2').value.trim();
+    var ka3Str = $('ka3').value.trim();
+
+    if (!ka1Str) { showErr('請輸入 Ka₁ 數值（強酸請輸入 SB）'); return; }
+
+    // SB = 強酸（100% 解離）；否則解析成數值
+    var ka1 = isStrong(ka1Str) ? 1e8 : Number(ka1Str);
+    var ka2 = isStrong(ka2Str) ? 1e8 : (Number(ka2Str) || 0);
+    var ka3 = isStrong(ka3Str) ? 1e8 : (Number(ka3Str) || 0);
+    var acidStrength = isStrong(ka1Str) ? 'strong' : 'weak';
+
+    if (isNaN(ka1) || ka1 <= 0) { showErr('Ka₁ 格式錯誤，請輸入數值（如 1.8e-5）或 SB'); return; }
+
+    var params = { acidType, acidStrength, acidConc, acidVol, baseConc, kaValues: [ka1, ka2, ka3] };
+    titData = window.TitrationEngine.calculate(params);
+
+    if (!titData || titData.length < 2) {
+      showErr('計算無結果，請確認輸入參數'); return;
+    }
+
+    renderChart(titData, params);
+    renderTable(titData, params);
+    renderEqInfo(params, titData);
+
+    $('img-btn').disabled = false;
+    $('csv-btn').disabled = false;
+
+    var names = { monoprotic:'一元酸', diprotic:'二元酸', triprotic:'三元酸' };
+    var str   = acidStrength === 'strong' ? '強' : '弱';
+    $('status').textContent = '✓ ' + str + names[acidType] + ' ' + acidConc + 'M × ' + acidVol + 'mL ÷ ' + baseConc + 'M NaOH';
+
+  } catch(e) {
+    showErr('計算錯誤：' + e.message);
+    console.error(e);
+  }
+}
+
+function renderChart(data, params) {
+  var ctx = $('myChart').getContext('2d');
+
+  // 使用 {x, y} 格式，方便線性座標軸
+  var xyData = data.map(function(d) { return { x: d.volume, y: d.pH }; });
+
+  // 當量點標記——每個當量點只採用距離最近的那個資料點
+  var eqVol    = params.acidConc * params.acidVol / params.baseConc;
+  var eqPoints = [eqVol];
+  if (params.acidType === 'diprotic')  eqPoints.push(2 * eqVol);
+  if (params.acidType === 'triprotic') eqPoints.push(2 * eqVol, 3 * eqVol);
+
+  var eqMarkers = eqPoints.map(function(v) {
+    var best = data.reduce(function(a, b) {
+      return Math.abs(a.volume - v) <= Math.abs(b.volume - v) ? a : b;
+    });
+    return { x: best.volume, y: best.pH };
+  });
+
+  if (chartInst) { chartInst.destroy(); chartInst = null; }
+
+  chartInst = new Chart(ctx, {
+    type: 'line',
+    data: {
+      datasets: [
+        {
+          label: 'pH',
+          data: xyData,
+          borderColor: '#818cf8',
+          borderWidth: 2.5,
+          pointRadius: 0,
+          pointHoverRadius: 5,
+          pointHoverBackgroundColor: '#c084fc',
+          fill: false,
+          tension: 0.1
+        },
+        {
+          label: '當量點',
+          data: eqMarkers,
+          type: 'scatter',
+          borderColor: '#f472b6',
+          backgroundColor: '#f472b6',
+          pointRadius: 7,
+          pointStyle: 'crossRot',
+          pointBorderWidth: 2.5,
+          showLine: false
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: { duration: 500 },
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { labels: { color: '#94a3b8', font: { size: 11 }, boxWidth: 14 } },
+        tooltip: {
+          callbacks: {
+            title: function(items) { return '加入體積：' + parseFloat(items[0].parsed.x).toFixed(2) + ' mL'; },
+            label: function(item) {
+              return item.datasetIndex === 0 
+                ? 'pH = ' + item.parsed.y.toFixed(3)
+                : '當量點 pH = ' + item.parsed.y.toFixed(3);
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          type: 'linear',
+          title: { display: true, text: '加入 NaOH 體積 (mL)', color: '#94a3b8', font: { size: 11 } },
+          ticks: {
+            color: '#94a3b8',
+            font: { size: 10 },
+            stepSize: 1,
+            maxTicksLimit: 20,
+            callback: function(val) {
+              // 只顯示整數刻度
+              return Number.isInteger(val) ? val : '';
+            }
+          },
+          grid: {
+            color: function(ctx2) {
+              // 整數核線稍亮，非整數的微小可見
+              return Number.isInteger(ctx2.tick.value)
+                ? 'rgba(255,255,255,.1)'
+                : 'rgba(255,255,255,.03)';
+            }
+          }
+        },
+        y: {
+          min: 0, max: 14,
+          title: { display: true, text: 'pH', color: '#94a3b8', font: { size: 11 } },
+          ticks: { stepSize: 1, color: '#94a3b8', font: { size: 10 } },
+          grid: { color: 'rgba(255,255,255,.04)' }
+        }
+      }
+    },
+    plugins: [{
+      id: 'pHZones',
+      beforeDraw: function(chart) {
+        var c   = chart.ctx;
+        var ca  = chart.chartArea;
+        var ysc = chart.scales.y;
+        if (!ca) return;
+        var zones = [[0,5,'rgba(220,38,38,.06)'],[5,9,'rgba(250,204,21,.05)'],[9,14,'rgba(99,102,241,.06)']];
+        zones.forEach(function(z) {
+          var yTop = ysc.getPixelForValue(z[1]);
+          var yBot = ysc.getPixelForValue(z[0]);
+          c.save();
+          c.fillStyle = z[2];
+          c.fillRect(ca.left, yTop, ca.right - ca.left, yBot - yTop);
+          c.restore();
+        });
+      }
+    }]
+  });
+
+  var names = { monoprotic:'一元酸', diprotic:'二元酸', triprotic:'三元酸' };
+  $('chart-title').textContent = (params.acidStrength==='strong'?'強':'弱') + names[params.acidType] + ' 滴定曲線';
+  $('chart-sub').textContent   = params.acidConc + ' M × ' + params.acidVol + ' mL ÷ ' + params.baseConc + ' M NaOH';
+}
+
+function renderEqInfo(params, data) {
+  var eqVol = params.acidConc * params.acidVol / params.baseConc;
+  var pts = [eqVol];
+  if (params.acidType === 'diprotic')  pts.push(2 * eqVol);
+  if (params.acidType === 'triprotic') pts.push(2 * eqVol, 3 * eqVol);
+
+  var grid = $('eq-grid');
+  grid.innerHTML = '';
+  pts.forEach(function(v, i) {
+    var closest = data.reduce(function(prev, cur) {
+      return Math.abs(cur.volume - v) < Math.abs(prev.volume - v) ? cur : prev;
+    });
+    var chip = document.createElement('div');
+    chip.className = 'eq-chip';
+    chip.innerHTML = '第 ' + (i+1) + ' 當量點<br><strong>' + v.toFixed(2) + ' mL</strong><br>pH ≈ ' + closest.pH;
+    grid.appendChild(chip);
+  });
+  $('eq-card').classList.remove('hidden');
+}
+
+/**
+ * 採樣規則：
+ * 1. 起始：0、0.5、1.0、1.5、2.0 mL（5 點，每 0.5 mL）
+ * 2. 中間：整數體積每 2 mL 一點（3、5、7 … 或 4、6、8 …）
+ *    穿插：半當量點各 1 點
+ * 3. 各當量點 ±2 mL：每 0.5 mL
+ * 4. 最後當量點後：整數值每 2 mL，共 5 點
+ */
+function buildTableVolumes(params) {
+  var eqUnit   = params.acidConc * params.acidVol / params.baseConc;
+  var eqPoints = [eqUnit];
+  if (params.acidType === 'diprotic')  eqPoints.push(2 * eqUnit);
+  if (params.acidType === 'triprotic') eqPoints.push(2 * eqUnit, 3 * eqUnit);
+
+  // 各段的半當量體積
+  var halfEqs = eqPoints.map(function(ep, i) {
+    var prev = i === 0 ? 0 : eqPoints[i - 1];
+    return (prev + ep) / 2;
+  });
+
+  var vSet = [];
+  function addV(v) {
+    var rv = Math.round(v * 100) / 100;
+    if (rv >= 0) vSet.push(rv);
+  }
+
+  // --- 階段 1：起始 0 ~ 2 mL，每 0.5 mL，共 5 點 ---
+  for (var s = 0; s <= 4; s++) addV(s * 0.5);
+
+  var cursor = 2.0;
+
+  for (var ei = 0; ei < eqPoints.length; ei++) {
+    var eqV    = eqPoints[ei];
+    var halfV  = halfEqs[ei];
+    var nearLo = eqV - 2;
+    var nearHi = eqV + 2;
+
+    // --- 中間段：整數每 2 mL + 半當量點 ---
+    // 從 cursor 之後找第一個整數且為偶數（或奇數）的點
+    var v = Math.ceil(cursor + 0.5); // 找下一個整數
+    if ((v % 2) !== (Math.ceil(nearLo) % 2)) v += 1; // 對齊步長 2
+    while (v < nearLo - 0.01) {
+      if (halfV > cursor && halfV < v) addV(halfV);  // 半當量點插入
+      addV(v);
+      cursor = v;
+      v += 2;
+    }
+    if (halfV > cursor && halfV < nearLo - 0.01) addV(halfV); // 確保半當量點已加入
+
+    // --- 當量點 ±2 mL：每 0.5 mL ---
+    for (var r = nearLo; r <= nearHi + 0.001; r += 0.5) {
+      addV(parseFloat(r.toFixed(1)));
+    }
+    cursor = nearHi;
+  }
+
+  // --- 最後當量點後：整數每 2 mL，共 5 點 ---
+  var vEnd = Math.ceil(cursor + 0.5);
+  if (vEnd % 2 !== 0) vEnd += 1; // 從偶數開始
+  for (var k = 0; k < 5; k++) addV(vEnd + k * 2);
+
+  // 排序、去重（< 0.05 mL 視為同一點）
+  vSet.sort(function(a, b) { return a - b; });
+  var deduped = [];
+  vSet.forEach(function(v) {
+    if (deduped.length === 0 || v - deduped[deduped.length - 1] > 0.04) {
+      deduped.push(v);
+    }
+  });
+  return deduped;
+}
+
+function renderTable(data, params) {
+  var tableVols = buildTableVolumes(params);
+  var tbody = $('tbody');
+  tbody.innerHTML = '';
+
+  var eqUnit   = params.acidConc * params.acidVol / params.baseConc;
+  var eqPoints = [eqUnit];
+  if (params.acidType === 'diprotic')  eqPoints.push(2 * eqUnit);
+  if (params.acidType === 'triprotic') eqPoints.push(2 * eqUnit, 3 * eqUnit);
+
+  var seen = {};
+  tableVols.forEach(function(tv) {
+    var key = tv.toFixed(2);
+    if (seen[key]) return;
+    seen[key] = true;
+
+    // 直接用引擎計算指定體積的精確 pH
+    var pt = window.TitrationEngine.calcAt(tv, params);
+    if (!pt) return;
+
+    var tr = document.createElement('tr');
+    var isEqRow = eqPoints.some(function(ev) { return Math.abs(pt.volume - ev) < 0.05; });
+    if (isEqRow) tr.style.background = 'rgba(244,114,182,.15)';
+    tr.innerHTML = '<td>' + tv.toFixed(2) + '</td><td>' + pt.pH.toFixed(3) + '</td><td>' + pt.hPlus + '</td>';
+    tbody.appendChild(tr);
+  });
+}
+
+function exportImg() {
+  if (!chartInst) return;
+  var src = $('myChart');
+  var c   = document.createElement('canvas');
+  c.width  = src.width;
+  c.height = src.height;
+  var cx = c.getContext('2d');
+  cx.fillStyle = '#0b0f1e';
+  cx.fillRect(0, 0, c.width, c.height);
+  cx.drawImage(src, 0, 0);
+  var a = document.createElement('a');
+  a.download = 'titration_curve.png';
+  a.href = c.toDataURL('image/png');
+  a.click();
+}
+
+function exportCSV() {
+  if (!titData.length) return;
+  var rows = ['\uFEFF體積(mL),pH,[H+]'];
+  titData.forEach(function(d) {
+    rows.push(d.volume.toFixed(4) + ',' + d.pH + ',' + d.hPlus);
+  });
+  var blob = new Blob([rows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+  var url  = URL.createObjectURL(blob);
+  var a    = document.createElement('a');
+  a.href = url; a.download = 'titration_data.csv'; a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ── Init ──
+document.addEventListener('DOMContentLoaded', function() {
+  $('acid-type').addEventListener('change', syncKa);
+
+  document.querySelectorAll('.preset-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() { setPreset(btn.dataset.preset); });
+  });
+
+  $('calc-btn').addEventListener('click', run);
+  $('img-btn').addEventListener('click', exportImg);
+  $('csv-btn').addEventListener('click', exportCSV);
+
+  // Default preset
+  setPreset('acetic');
+  run();
+});
+
+})();
+</script>
+</body>
+</html>

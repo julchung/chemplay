@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI 神 化</title>
+    <title>化學遊樂園</title>
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;700&family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
     <style>
@@ -109,6 +109,8 @@
         .spec-card { --accent: var(--accent-1); }
         .photo-card { --accent: var(--accent-2); }
         .bubble-card { --accent: #ff6b6b; }
+        .crystal-card { --accent: #a78bfa; }
+        .acidbase-card { --accent: #fbbf24; }
 
         .empty-card {
             opacity: 0.3;
@@ -213,7 +215,7 @@
 <body>
     <div class="container">
         <header>
-            <h1> AI 神 化 </h1>
+            <h1>化學遊樂園</h1>
             <p class="subtitle">為行動裝置與教學環境設計的互動科學實驗與遊戲平台</p>
         </header>
 
@@ -222,7 +224,7 @@
                 <div class="icon-box">🌈</div>
                 <h2>分光儀分析</h2>
                 <p class="description">
-                    分析光的波長特性，支援即時相機取樣、波長校正與 CSV 資料匯出。
+                    分析光的波長特性，（需完成分光儀外部製作）支援即時相機取樣、波長校正與 CSV 資料匯出。
                 </p>
                 <span class="btn">立即開啟</span>
             </a>
@@ -231,30 +233,41 @@
                 <div class="icon-box">🧪</div>
                 <h2>光度計實驗</h2>
                 <p class="description">
-                    測量溶液吸收度與穿透率，內建檢量線製作與時間序列監控功能。
+                    （需完成光度計外部製作再利用相機進行實驗）測量溶液吸收度與穿透率，內建檢量線製作與時間序列監控功能。
                 </p>
                 <span class="btn">立即開啟</span>
             </a>
 
-            <div class="tool-card empty-card">
-                <div class="icon-box"></div>
-                <h2>空</h2>
-                <p class="description"></p>
-            </div>
+            <a href="bubblegame/index.html" class="tool-card bubble-card">
+                <div class="icon-box">🫧</div>
+                <h2>離子泡泡龍</h2>
+                <p class="description">
+                    趣味互動遊戲，帶領學生在挑戰中探索離子世界的奧秘與科學規律。
+                </p>
+                <span class="btn">進入遊戲</span>
+            </a>
+
+            <!-- Crystal Packing -->
+            <a href="crystalpacking/index.html" class="tool-card crystal-card">
+                <div class="icon-box">💎</div>
+                <h2>晶體堆積</h2>
+                <p class="description">
+                    互動探索陰陽離子半徑比與晶體堆積方式的關係，深入理解離子晶體結構。
+                </p>
+                <span class="btn">進入探索</span>
+            </a>
+
+            <!-- Acid-Base Titration -->
+            <a href="acidbase/index.html" class="tool-card acidbase-card">
+                <div class="icon-box">⚗️</div>
+                <h2>酸鹼滴定曲線</h2>
+                <p class="description">
+                    動態製作各種酸鹼滴定曲線，支援強酸強鹼、弱酸弱鹼與多質子酸系統。
+                </p>
+                <span class="btn">開始模擬</span>
+            </a>
 
             <!-- Placeholder Slots -->
-            <div class="tool-card empty-card">
-                <div class="icon-box"></div>
-                <h2>空</h2>
-                <p class="description"></p>
-            </div>
-
-            <div class="tool-card empty-card">
-                <div class="icon-box"></div>
-                <h2>空</h2>
-                <p class="description"></p>
-            </div>
-
             <div class="tool-card empty-card">
                 <div class="icon-box"></div>
                 <h2>空</h2>

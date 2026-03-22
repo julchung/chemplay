@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>晶體堆積配位數演示 | Crystal Packing Coordination</title>
+    <!-- p5.js Libs -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.11.1/p5.js"></script>
+    <style>
+        :root {
+            --glass-bg: rgba(255, 255, 255, 0.7);
+            --glass-border: rgba(255, 255, 255, 0.3);
+            --accent-color: #6366f1;
+            --text-color: #1f2937;
+            --cation-color: #ff4d6d;
+            --anion-color: #4895ef;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+        }
+
+        body {
+            overflow: hidden;
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #canvas-container {
+            flex-grow: 1;
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+
+        /* Responsive UI Panel */
+        .controls {
+            position: absolute;
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            padding: 24px;
+            border-radius: 24px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
+            z-index: 100;
+            transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+        }
+
+        /* Desktop: Side Panel */
+        @media (min-width: 768px) {
+            .controls {
+                top: 20px;
+                left: 20px;
+                width: 320px;
+            }
+        }
+
+        /* Mobile: Bottom Panel */
+        @media (max-width: 767px) {
+            .controls {
+                bottom: 20px;
+                left: 15px;
+                right: 15px;
+                padding: 16px;
+                border-radius: 20px;
+            }
+        }
+
+        h1 {
+            font-size: 1.25rem;
+            margin-bottom: 20px;
+            color: var(--text-color);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .control-group {
+            margin-bottom: 18px;
+        }
+
+        label {
+            display: block;
+            font-size: 0.9rem;
+            margin-bottom: 8px;
+            color: #4b5563;
+            font-weight: 600;
+        }
+
+        .slider-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        input[type="range"] {
+            flex-grow: 1;
+            accent-color: var(--accent-color);
+            cursor: pointer;
+            height: 6px;
+            border-radius: 3px;
+            background: #cbd5e1;
+            -webkit-appearance: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            background: white;
+            border: 2px solid var(--accent-color);
+            border-radius: 50%;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .value-badge {
+            background: white;
+            padding: 4px 10px;
+            border-radius: 10px;
+            font-size: 0.9rem;
+            font-weight: 700;
+            border: 1px solid #e2e8f0;
+            min-width: 48px;
+            text-align: center;
+            color: var(--accent-color);
+        }
+
+        .info-panel {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(0,0,0,0.08);
+        }
+
+        .ratio-display {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: var(--accent-color);
+            margin-bottom: 8px;
+            letter-spacing: -0.5px;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 6px 14px;
+            border-radius: 30px;
+            background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%);
+            color: #4338ca;
+            font-size: 0.9rem;
+            font-weight: 700;
+            margin-bottom: 12px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+
+        .description {
+            font-size: 0.9rem;
+            color: #64748b;
+            line-height: 1.5;
+            min-height: 3em;
+        }
+
+        .hint {
+            position: absolute;
+            bottom: 25px;
+            right: 25px;
+            background: rgba(15, 23, 42, 0.7);
+            color: white;
+            padding: 10px 18px;
+            border-radius: 40px;
+            font-size: 0.8rem;
+            pointer-events: none;
+            backdrop-filter: blur(8px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            transition: opacity 0.3s;
+        }
+
+        /* Color legends */
+        .dot { height: 12px; width: 12px; border-radius: 50%; display: inline-block; margin-right: 6px; vertical-align: middle; }
+        .dot.cation { background-color: var(--cation-color); box-shadow: 0 0 10px rgba(255, 77, 109, 0.4); }
+        .dot.anion { background-color: var(--anion-color); box-shadow: 0 0 10px rgba(72, 149, 239, 0.4); }
+
+        /* Animation for structures */
+        .fade-in {
+            animation: fadeIn 0.5s ease-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="canvas-container">
+        <!-- p5.js canvas will be here -->
+        
+        <div class="controls">
+            <h1>💎 晶體堆積演示</h1>
+            
+            <div class="control-group">
+                <label><span class="dot cation"></span> 陽離子半徑 (r+)</label>
+                <div class="slider-row">
+                    <input type="range" id="rPlusSlider" min="20" max="250" value="100">
+                    <span class="value-badge" id="rPlusVal">100</span>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <label><span class="dot anion"></span> 陰離子半徑 (r-)</label>
+                <div class="slider-row">
+                    <input type="range" id="rMinusSlider" min="50" max="250" value="100">
+                    <span class="value-badge" id="rMinusVal">100</span>
+                </div>
+            </div>
+
+            <div class="info-panel">
+                <div class="ratio-display" id="ratioText">1.000</div>
+                <div class="status-badge" id="structureText">立方體裝填 (CN=8)</div>
+                <p class="description" id="descText">
+                    半徑比 ≥ 0.732，陽離子填入口袋狀空隙中。
+                </p>
+            </div>
+        </div>
+
+        <div class="hint" id="interactionHint">🖱️ 拖曳旋轉 | 滾輪縮放 | 📱 雙指平移/縮放</div>
+    </div>
+
+    <script>
+        let rPlus = 100;
+        let rMinus = 100;
+        let structures = [
+            { threshold: 0.732, name: "立方體填隙 (CN=8)", desc: "理想比例 ≥ 0.732。陽離子位於立方體中心，周圍有 8 個陰離子。", type: "cube" },
+            { threshold: 0.414, name: "八面體填隙 (CN=6)", desc: "理想比例 0.414 - 0.732。陽離子位於八面體中心，周圍有 6 個陰離子。", type: "octa" },
+            { threshold: 0.225, name: "四面體填隙 (CN=4)", desc: "理想比例 0.225 - 0.414。陽離子位於四面體中心，周圍有 4 個陰離子。", type: "tetra" },
+            { threshold: 0.155, name: "平面三角形填隙 (CN=3)", desc: "理想比例 0.155 - 0.225。陽離子位於三角形中心，周圍有 3 個陰離子。", type: "tri" },
+            { threshold: 0, name: "線性填隙 (CN=2)", desc: "理想比例 < 0.155。陽離子位於兩個陰離子中間形成直線型。", type: "line" }
+        ];
+
+        const rPlusSlider = document.getElementById('rPlusSlider');
+        const rMinusSlider = document.getElementById('rMinusSlider');
+        const rPlusVal = document.getElementById('rPlusVal');
+        const rMinusVal = document.getElementById('rMinusVal');
+        const ratioText = document.getElementById('ratioText');
+        const structureText = document.getElementById('structureText');
+        const descText = document.getElementById('descText');
+        const hint = document.getElementById('interactionHint');
+
+        function updateUI() {
+            rPlus = parseFloat(rPlusSlider.value);
+            rMinus = parseFloat(rMinusSlider.value);
+            rPlusVal.innerText = rPlus;
+            rMinusVal.innerText = rMinus;
+
+            let ratio = rPlus / rMinus;
+            ratioText.innerText = "半径比 (r+/r-): " + ratio.toFixed(3);
+
+            let current = structures.find(s => ratio >= s.threshold);
+            if (current && structureText.innerText !== current.name) {
+                structureText.innerText = current.name;
+                descText.innerText = current.desc;
+                structureText.classList.remove('fade-in');
+                void structureText.offsetWidth; // Trigger reflow
+                structureText.classList.add('fade-in');
+            }
+        }
+
+        rPlusSlider.oninput = updateUI;
+        rMinusSlider.oninput = updateUI;
+
+        // p5.js Sketch
+        function setup() {
+            let container = document.getElementById('canvas-container');
+            let canvas = createCanvas(container.offsetWidth, container.offsetHeight, WEBGL);
+            canvas.parent('canvas-container');
+            pixelDensity(window.devicePixelRatio);
+            updateUI();
+            
+            // Auto hide hint
+            setTimeout(() => { if(hint) hint.style.opacity = '0.4'; }, 5000);
+        }
+
+        function draw() {
+            background(245, 247, 250);
+            
+            // Lighting for premium feel
+            ambientLight(100);
+            pointLight(255, 255, 255, 500, -500, 500);
+            directionalLight(100, 100, 100, 0, 1, -1);
+            
+            // Interaction
+            orbitControl(1, 1, 0.05); 
+
+            push();
+            // Center Atom (Cation)
+            noStroke();
+            fill(255, 77, 109);
+            specularMaterial(255);
+            shininess(100);
+            sphere(rPlus, 64); // Smooth sphere
+
+            // Surrounding Atoms (Anions)
+            fill(72, 149, 239, 180);
+            let ratio = rPlus / rMinus;
+
+            if (ratio >= 0.732) {
+                drawCubeSpheres();
+            } else if (ratio >= 0.414) {
+                drawSixSpheres();
+            } else if (ratio >= 0.225) {
+                drawFourSpheres();
+            } else if (ratio >= 0.155) {
+                drawTriangleSpheres();
+            } else {
+                drawTwoSpheres();
+            }
+            pop();
+        }
+
+        function drawCubeSpheres() {
+            let l = (rPlus + rMinus) / Math.sqrt(3);
+            for (let x of [-1, 1]) {
+                for (let y of [-1, 1]) {
+                    for (let z of [-1, 1]) {
+                        push();
+                        translate(x * l, y * l, z * l);
+                        sphere(rMinus, 48);
+                        pop();
+                    }
+                }
+            }
+            // Polyhedron outline
+            stroke(255, 215, 0, 100);
+            strokeWeight(1);
+            noFill();
+            box(l * 2);
+        }
+
+        function drawSixSpheres() {
+            let d = rPlus + rMinus;
+            let positions = [
+                [d,0,0], [-d,0,0], [0,d,0], [0,-d,0], [0,0,d], [0,0,-d]
+            ];
+            for (let p of positions) {
+                push();
+                translate(p[0], p[1], p[2]);
+                sphere(rMinus, 48);
+                pop();
+            }
+            // Show Octahedron guide
+            stroke(255, 215, 0, 60);
+            beginShape(LINES);
+            for (let i = 0; i < positions.length; i++) {
+                for (let j = i+1; j < positions.length; j++) {
+                    if (Math.abs(positions[i][0] - positions[j][0]) + 
+                        Math.abs(positions[i][1] - positions[j][1]) + 
+                        Math.abs(positions[i][2] - positions[j][2]) < 1.5 * d * 2) {
+                        vertex(positions[i][0], positions[i][1], positions[i][2]);
+                        vertex(positions[j][0], positions[j][1], positions[j][2]);
+                    }
+                }
+            }
+            endShape();
+        }
+
+        function drawFourSpheres() {
+            let l = (rPlus + rMinus) / Math.sqrt(3);
+            let positions = [
+                [l, l, l], [-l, -l, l], [-l, l, -l], [l, -l, -l]
+            ];
+            for (let p of positions) {
+                push();
+                translate(p[0], p[1], p[2]);
+                sphere(rMinus, 48);
+                pop();
+            }
+            // Frame cube
+            stroke(255, 215, 0, 40);
+            noFill();
+            box(l * 2);
+            // Tetrahedron lines
+            stroke(255, 215, 0, 100);
+            beginShape(LINES);
+            for (let i = 0; i < positions.length; i++) {
+                for (let j = i+1; j < positions.length; j++) {
+                    vertex(positions[i][0], positions[i][1], positions[i][2]);
+                    vertex(positions[j][0], positions[j][1], positions[j][2]);
+                }
+            }
+            endShape();
+        }
+
+        function drawTriangleSpheres() {
+            let d = rPlus + rMinus;
+            let positions = [];
+            for (let i = 0; i < 3; i++) {
+                let ang = TWO_PI / 3 * i - HALF_PI;
+                let x = Math.cos(ang) * d;
+                let y = Math.sin(ang) * d;
+                positions.push({x, y});
+                push();
+                translate(x, y, 0);
+                sphere(rMinus, 48);
+                pop();
+            }
+            // Outline
+            stroke(255, 215, 0, 150);
+            line(positions[0].x, positions[0].y, 0, positions[1].x, positions[1].y, 0);
+            line(positions[1].x, positions[1].y, 0, positions[2].x, positions[2].y, 0);
+            line(positions[2].x, positions[2].y, 0, positions[0].x, positions[0].y, 0);
+        }
+
+        function drawTwoSpheres() {
+            let d = rPlus + rMinus;
+            for (let z of [-d, d]) {
+                push();
+                translate(0, 0, z);
+                sphere(rMinus, 48);
+                pop();
+            }
+            stroke(255, 215, 0, 100);
+            line(0, 0, -d, 0, 0, d);
+        }
+
+        function windowResized() {
+            let container = document.getElementById('canvas-container');
+            resizeCanvas(container.offsetWidth, container.offsetHeight);
+        }
+    </script>
+</body>
+</html>
