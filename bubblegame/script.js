@@ -16,7 +16,7 @@ const HEADER_HEIGHT = 50;
 const BUBBLE_RADIUS = 30;
 const BUBBLE_DIAMETER = BUBBLE_RADIUS * 2;
 const GRID_COLS = Math.floor(INTERNAL_WIDTH / BUBBLE_DIAMETER);
-const GRID_ROWS = 20;
+const GRID_ROWS = 15;
 
 // Scaling variables
 let scale = 1;
@@ -353,6 +353,12 @@ function landProjectile() {
     reloadShooter();
 
     if (r >= GRID_ROWS - 1) gameOver = true;
+    else if (grid[`${r},${c}`]) {
+        // Double check if bubble is too low
+        if (grid[`${r},${c}`].y + BUBBLE_RADIUS > INTERNAL_HEIGHT - 100) {
+            gameOver = true;
+        }
+    }
 }
 
 function processReaction(startBubble) {
@@ -515,7 +521,7 @@ function addRow() {
         let b = grid[key];
         let nr = b.r + 1;
         if (nr % 2 === 1 && b.c >= GRID_COLS - 1) continue;
-        if (nr >= GRID_ROWS) gameOver = true;
+        if (nr >= GRID_ROWS - 1) gameOver = true;
         b.r = nr;
         b.updatePos();
         newGrid[`${nr},${b.c}`] = b;
@@ -621,6 +627,22 @@ function render() {
         ctx.restore();
         return;
     }
+
+    // Danger Line
+    const dangerY = (GRID_ROWS - 1) * (BUBBLE_DIAMETER * 0.85) + BUBBLE_RADIUS + HEADER_HEIGHT + BUBBLE_RADIUS;
+    ctx.strokeStyle = 'rgba(255, 0, 0, 0.5)';
+    ctx.lineWidth = 3;
+    ctx.setLineDash([10, 10]);
+    ctx.beginPath();
+    ctx.moveTo(0, dangerY);
+    ctx.lineTo(INTERNAL_WIDTH, dangerY);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    
+    ctx.fillStyle = 'rgba(255, 0, 0, 0.2)';
+    ctx.font = 'bold 20px "Noto Sans TC"';
+    ctx.textAlign = 'center';
+    ctx.fillText("DANGER LINE", INTERNAL_WIDTH / 2, dangerY - 10);
 
     // Bubbles
     for (let key in grid) grid[key].draw();
