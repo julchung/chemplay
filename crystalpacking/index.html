@@ -34,9 +34,10 @@
         #canvas-container {
             flex-grow: 1;
             width: 100%;
-            height: 100%;
+            /* 移除 height: 100% 以便 Flexbox 正確計算剩餘空間 */
             position: relative;
             z-index: 1;
+            overflow: hidden; 
         }
 
         /* Responsive UI Panel */
@@ -67,13 +68,22 @@
             }
         }
 
-        /* Mobile/Embed: Top Panel (縮減間距並限制高度) */
+        /* Mobile/Embed: Top Panel (更精簡的佔比，確保不擋住晶體) */
         @media (max-width: 849px) {
             .controls {
-                margin: 10px;
-                padding: 16px;
-                max-height: 45vh;
+                margin: 5px;
+                padding: 10px 15px;
+                max-height: 25vh; /* 嚴格限制在 25% 高度以內 */
+                border-radius: 12px;
+                font-size: 0.85rem;
             }
+            h1 { font-size: 1.05rem; margin-bottom: 8px; }
+            .control-group { margin-bottom: 6px; }
+            label { font-size: 0.8rem; margin-bottom: 2px; }
+            .info-panel { margin-top: 8px; padding-top: 8px; }
+            .ratio-display { font-size: 1.1rem; margin-bottom: 2px; }
+            .status-badge { font-size: 0.75rem; padding: 3px 8px; margin-bottom: 6px; }
+            .description { font-size: 0.75rem; line-height: 1.3; }
         }
 
         h1 {
@@ -299,6 +309,10 @@
             orbitControl(1, 1, 0.05); 
 
             push();
+            // 動態縮放：根據畫布最小邊長來調整模型大小，確保在 Blogger iframe 中不超出範圍
+            let baseSize = Math.min(width, height);
+            let sc = baseSize / 650; 
+            scale(sc);
             // Center Atom (Cation)
             noStroke();
             fill(255, 77, 109);
