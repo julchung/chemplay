@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>原子混成軌域互動式展示 (Atomic Orbital Hybridization)</title>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    
+    <!-- GSAP for Animations -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+</head>
+<body>
+    <div id="app-container">
+        <!-- 3D Canvas Area -->
+        <div id="canvas-container">
+            <div id="loading" class="active">正在載入 3D 引擎...</div>
+            <div class="instructions">拖曳以旋轉模型 | 滾動以縮放</div>
+            <canvas id="orbital-canvas"></canvas>
+        </div>
+
+        <!-- UI Sidebar / Bottom Sheet -->
+        <aside id="controls-panel">
+            <header>
+                <h1>混成軌域展示</h1>
+                <p>選擇各類混成軌域進行互動觀察，體會空間排列與立體關係。</p>
+            </header>
+
+            <div class="summary-table-container">
+                <h2>混成總表與選擇</h2>
+                <div class="hybrid-options">
+                    <!-- sp -->
+                    <button class="hybrid-btn active" data-type="sp">
+                        <div class="btn-content">
+                            <span class="type-badge">sp</span>
+                            <span class="shape-name">直線型 (Linear)</span>
+                            <span class="angle-info">180°</span>
+                        </div>
+                    </button>
+                    <!-- sp2 -->
+                    <button class="hybrid-btn" data-type="sp2">
+                        <div class="btn-content">
+                            <span class="type-badge">sp²</span>
+                            <span class="shape-name">平面三角形 (Trigonal Planar)</span>
+                            <span class="angle-info">120°</span>
+                        </div>
+                    </button>
+                    <!-- sp3 -->
+                    <button class="hybrid-btn" data-type="sp3">
+                        <div class="btn-content">
+                            <span class="type-badge">sp³</span>
+                            <span class="shape-name">四面體 (Tetrahedral)</span>
+                            <span class="angle-info">109.5°</span>
+                        </div>
+                    </button>
+                    <!-- sp3d -->
+                    <button class="hybrid-btn" data-type="sp3d">
+                        <div class="btn-content">
+                            <span class="type-badge">sp³d</span>
+                            <span class="shape-name">雙三角錐 (Trigonal Bipyramidal)</span>
+                            <span class="angle-info">90° / 120°</span>
+                        </div>
+                    </button>
+                    <!-- sp3d2 -->
+                    <button class="hybrid-btn" data-type="sp3d2">
+                        <div class="btn-content">
+                            <span class="type-badge">sp³d²</span>
+                            <span class="shape-name">八面體 (Octahedral)</span>
+                            <span class="angle-info">90°</span>
+                        </div>
+                    </button>
+                </div>
+            </div>
+
+            <div class="action-panel">
+                <button id="btn-show-atomic">顯示原子軌域 (合成前)</button>
+                <button id="btn-hybridize" class="primary-action">進行混成！(Hybridize)</button>
+            </div>
+            
+        </aside>
+    </div>
+
+    <!-- Import Map for Three.js ES Modules -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://cdnjs.cloudflare.com/ajax/libs/three.js/0.158.0/three.module.js",
+                "three/addons/": "https://cdnjs.cloudflare.com/ajax/libs/three.js/0.158.0/examples/jsm/"
+            }
+        }
+    </script>
+    <script type="module" src="app.js"></script>
+</body>
+</html>
