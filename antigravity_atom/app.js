@@ -1,5 +1,5 @@
-import * as THREE from 'three';
-import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import * as THREE from 'https://esm.sh/three@0.158.0';
+import { OrbitControls } from 'https://esm.sh/three@0.158.0/examples/jsm/controls/OrbitControls.js';
 
 // --- Global Variables ---
 let scene, camera, renderer, controls;
@@ -124,33 +124,36 @@ function renderAtomicSelection() {
         atomicGroup.add(px1, px2);
     }
     if(activeOrbitals.has('py')){
-        const py1 = createLobe(COLORS.p, 3, 1); 
-        const py2 = createLobe(COLORS.p, 3, 1); py2.rotation.x = Math.PI;
+        // Chemistry Y is Three.js Z (Horizontal)
+        const py1 = createLobe(COLORS.p, 3, 1); py1.rotation.x = Math.PI/2; 
+        const py2 = createLobe(COLORS.p, 3, 1); py2.rotation.x = -Math.PI/2;
         atomicGroup.add(py1, py2);
     }
     if(activeOrbitals.has('pz')){
-        const pz1 = createLobe(COLORS.p, 3, 1); pz1.rotation.x = Math.PI/2;
-        const pz2 = createLobe(COLORS.p, 3, 1); pz2.rotation.x = -Math.PI/2;
+        // Chemistry Z is Three.js Y (Vertical, aligned with dz2)
+        const pz1 = createLobe(COLORS.p, 3, 1); 
+        const pz2 = createLobe(COLORS.p, 3, 1); pz2.rotation.x = Math.PI;
         atomicGroup.add(pz1, pz2);
     }
     
     if(activeOrbitals.has('dz2')){
-        const dz1 = createLobe(COLORS.d, 3.5, 0.8);
-        const dz2 = createLobe(COLORS.d, 3.5, 0.8); dz2.rotation.x = Math.PI;
-        const torusGeo = new THREE.TorusGeometry(1.0, 0.3, 16, 50);
+        const dz1 = createLobe(COLORS.d, 4.5, 0.9);
+        const dz2 = createLobe(COLORS.d, 4.5, 0.9); dz2.rotation.x = Math.PI;
+        // Make the torus (donut) much larger to wrap around the p orbitals
+        const torusGeo = new THREE.TorusGeometry(2.2, 0.5, 16, 50);
         const torusMat = new THREE.MeshPhongMaterial({color: COLORS.d, transparent: true, opacity: 0.8});
         const ring = new THREE.Mesh(torusGeo, torusMat);
-        ring.rotation.x = Math.PI/2;
+        ring.rotation.x = Math.PI/2; // Lie flat in XZ (equatorial) plane
         atomicGroup.add(dz1, dz2, ring);
     }
     
     if(activeOrbitals.has('dx2y2')){
-        for(let i=0; i<4; i++){
-            const dx = createLobe(COLORS.d, 3, 0.8);
-            // dx2-y2 is in xy plane, with lobes along x and y axes
-            dx.rotation.z = i * Math.PI/2;
-            atomicGroup.add(dx);
-        }
+        // dx2y2 lies in the chemistry XY plane (Three.js XZ plane)
+        const dx1 = createLobe(COLORS.d, 4.5, 0.9); dx1.rotation.z = -Math.PI/2; // +X
+        const dx2 = createLobe(COLORS.d, 4.5, 0.9); dx2.rotation.z = Math.PI/2;  // -X
+        const dx3 = createLobe(COLORS.d, 4.5, 0.9); dx3.rotation.x = Math.PI/2;  // +Z
+        const dx4 = createLobe(COLORS.d, 4.5, 0.9); dx4.rotation.x = -Math.PI/2; // -Z
+        atomicGroup.add(dx1, dx2, dx3, dx4);
     }
     
     // Animate pop-in effect 
@@ -224,23 +227,34 @@ function buildHybridGeometry(type) {
 // --- Logic & Detection ---
 function checkHybridizationRule() {
     const hasS = activeOrbitals.has('s');
-    let pCount = 0;
-    if(activeOrbitals.has('px')) pCount++;
-    if(activeOrbitals.has('py')) pCount++;
-    if(activeOrbitals.has('pz')) pCount++;
+    const hasPx = activeOrbitals.has('px');
+    const hasPy = activeOrbitals.has('py');
+    const hasPz = activeOrbitals.has('pz');
     
-    let dCount = 0;
-    if(activeOrbitals.has('dz2')) dCount++;
-    if(activeOrbitals.has('dx2y2')) dCount++;
+    let pCount = 0;
+    if(hasPx) pCount++;
+    if(hasPy) pCount++;
+    if(hasPz) pCount++;
+    
+    const hasDz2 = activeOrbitals.has('dz2');
+    const hasDx2y2 = activeOrbitals.has('dx2y2');
+    let dCount = (hasDz2?1:0) + (hasDx2y2?1:0);
 
     let matchedType = null;
     
-    // Strict rules
-    if (hasS && pCount === 1 && dCount === 0) matchedType = 'sp';
-    else if (hasS && pCount === 2 && dCount === 0) matchedType = 'sp2';
-    else if (hasS && pCount === 3 && dCount === 0) matchedType = 'sp3';
-    else if (hasS && pCount === 3 && dCount === 1) matchedType = 'sp3d';
-    else if (hasS && pCount === 3 && dCount === 2) matchedType = 'sp3d2';
+    // Strict rules with precise chemistry directional requirements
+    if (hasS && pCount === 1 && dCount === 0) {
+        matchedType = 'sp';
+    } else if (hasS && pCount === 2 && dCount === 0) {
+        matchedType = 'sp2';
+    } else if (hasS && pCount === 3 && dCount === 0) {
+        matchedType = 'sp3';
+    } else if (hasS && pCount === 3 && dCount === 1) {
+        // Strict sp3d requires dz2, dx2-y2 is invalid for sp3d
+        if (hasDz2) matchedType = 'sp3d';
+    } else if (hasS && pCount === 3 && dCount === 2) {
+        matchedType = 'sp3d2';
+    }
 
     // Update UI Buttons
     document.querySelectorAll('.hybrid-btn').forEach(btn => {
@@ -266,6 +280,29 @@ function triggerHybridizeAnim() {
 
     // Build the invisible target logic
     buildHybridGeometry(currentHybridState);
+    
+    // Directional alignment logic based on specific selected atomic orbitals
+    hybridGroup.rotation.set(0, 0, 0); // Reset
+    
+    if (currentHybridState === 'sp') {
+        // Base sp is along Three.js X-axis (Chemistry X)
+        if (activeOrbitals.has('py')) {
+            // align to Three.js Z (Chemistry Y)
+            hybridGroup.rotation.y = Math.PI / 2; 
+        } else if (activeOrbitals.has('pz')) {
+            // align to Three.js Y (Chemistry Z)
+            hybridGroup.rotation.z = Math.PI / 2; 
+        }
+    } else if (currentHybridState === 'sp2') {
+        // Base sp2 is built in Three.js XY plane (Chemistry XZ plane) -> px + pz
+        if (activeOrbitals.has('px') && activeOrbitals.has('py')) {
+            // align to Three.js XZ plane (Chemistry XY)
+            hybridGroup.rotation.x = Math.PI / 2; 
+        } else if (activeOrbitals.has('py') && activeOrbitals.has('pz')) {
+            // align to Three.js ZY plane (Chemistry YZ)
+            hybridGroup.rotation.y = Math.PI / 2; 
+        }
+    }
 
     // 3 Second Animation 
     // Target atomic group shrinks
