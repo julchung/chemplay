@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D 互動化學鍵結模擬</title>
+    <!-- 引入現代字體 -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- 左側面板：選擇軌域 -->
+        <aside class="sidebar">
+            <div class="header">
+                <h2>3D 軌域成鍵模擬</h2>
+                <p>了解共價鍵在立體空間中的重疊與融合</p>
+                <div class="help-text">
+                    [提示] <br>
+                    滑鼠左鍵：旋轉鏡頭<br>
+                    滑鼠右鍵：平移鏡頭<br>
+                    滑鼠滾輪：縮放大小
+                </div>
+            </div>
+            
+            <div class="atom-section">
+                <h3>選擇鍵結類型</h3>
+                <div class="orbital-options" id="options-preset">
+                    <button class="orbital-btn active" data-preset="ss">s-s 單鍵 (σ)</button>
+                    <button class="orbital-btn" data-preset="sp">s-p 單鍵 (σ)</button>
+                    <button class="orbital-btn" data-preset="pp_sigma">p-p 單鍵 (σ)</button>
+                    <button class="orbital-btn" data-preset="pp_pi">p-p 多重鍵 (π)</button>
+                    <div class="btn-group">
+                        <button class="orbital-btn main-btn" data-preset="sp2_sp2">sp2-sp2 鍵結</button>
+                        <button class="orbital-btn sub-btn" id="toggle-pz" title="顯示未混成的 pz 軌域">pz 軌域</button>
+                    </div>
+                    <div class="btn-group">
+                        <button class="orbital-btn main-btn" data-preset="sp_sp">sp-sp 混成鍵</button>
+                        <div class="sub-btn-col">
+                            <button class="orbital-btn sub-btn" id="toggle-py" title="顯示 py 軌域">py 軌域</button>
+                            <button class="orbital-btn sub-btn" id="toggle-pz-sp" title="顯示 pz 軌域">pz 軌域</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="legend">
+                <h4>電子雲標示</h4>
+                <div class="legend-item"><span class="color-box pos"></span> 正相位 (+)</div>
+                <div class="legend-item"><span class="color-box neg"></span> 負相位 (-)</div>
+                <div class="legend-item"><span class="color-box sp"></span> 混成軌域</div>
+                <div class="legend-item"><span class="color-box core"></span> 原子核</div>
+                <p class="legend-hint">同相位互相接觸時會如同液體般融合降低能量，形成鍵結區域。</p>
+            </div>
+        </aside>
+
+        <!-- 主畫面區：畫布與滑桿 -->
+        <main class="main-display">
+            <!-- 距離控制區置頂 -->
+            <div class="controls-container">
+                <div class="control-header">
+                    <span>遠 (Far)</span>
+                    <label for="distance-slider">透過滑桿拉近兩個原子發生重疊</label>
+                    <span>近 (Near)</span>
+                </div>
+                <!-- 值=0 代表最遠，100 代表最近 -->
+                <input type="range" id="distance-slider" min="0" max="100" value="0">
+            </div>
+
+            <!-- 3D 畫布區佔 80% -->
+            <div class="canvas-container" id="webgl-container">
+                <!-- Three.js 將在此生成 <canvas> -->
+            </div>
+        </main>
+    </div>
+    
+    <!-- 使用 Import Map 指定 Three.js 路徑 -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.163.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.163.0/examples/jsm/"
+            }
+        }
+    </script>
+    <script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { MarchingCubes } from 'three/addons/objects/MarchingCubes.js';
+
+let container, camera, scene, renderer;
+let controls;
+let mcPos, mcNeg, mcPzPos, mcPzNeg, mcSpIn, mcSpOut;
+let nucleusA, nucleusB;
+
+// UI Elements
+const distanceSlider = document.getElementById('distance-slider');
+const typeButtons = document.querySelectorAll('.orbital-btn[data-preset]');
+const togglePyBtn = document.getElementById('toggle-py');
+const togglePzSpBtn = document.getElementById('toggle-pz-sp');
+const togglePzBtn = document.getElementById('toggle-pz');
+
+// State
+const state = {
+    bondType: 'ss',
+    distance: 0, // 0 to 100
+    showPy: false, // Show py orbital flag for sp_sp
+    showPzSp: false, // Show pz orbital flag for sp_sp
+    showPz: false // Show pz orbital flag
+};
+
+// Colors
+const POS_COLOR = 0xff2a5f; // Red/Pink
+const NEG_COLOR = 0x00a8ff; // Blue
+const CORE_COLOR = 0xffffff;
+const SP_COLOR = 0x10b981; // Green for hybrids
+
+init();
+animate();
+
+function init() {
+    container = document.getElementById('webgl-container');
+
+    // Scene setup
+    scene = new THREE.Scene();
+    
+    // Camera
+    const width = container.clientWidth;
+    const height = container.clientHeight;
+    camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
+    // Pulled camera back to comfortably fit the fully separated orbitals on screen
+    camera.position.set(0, 0, 10);
+
+    // Renderer
+    renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setSize(width, height);
+    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.setClearColor(0x000000, 0); // Transparent background
+    container.appendChild(renderer.domElement);
+
+    // Controls
+    controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+    controls.minDistance = 3; // 防止放大過頭跑到模型內部
+    controls.maxDistance = 30; // 防止縮小到看不見
+    controls.zoomSpeed = 0.3; // 降低滾輪縮放的敏感度
+
+
+    // Lighting
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+    scene.add(ambientLight);
+
+    const dirLight1 = new THREE.DirectionalLight(0xffffff, 1.2);
+    dirLight1.position.set(2, 2, 2);
+    scene.add(dirLight1);
+
+    const dirLight2 = new THREE.DirectionalLight(0xffffff, 0.8);
+    dirLight2.position.set(-2, -2, 2);
+    scene.add(dirLight2);
+
+    // Materials
+    const materialPos = new THREE.MeshPhysicalMaterial({
+        color: POS_COLOR,
+        metalness: 0.1,
+        roughness: 0.15,
+        clearcoat: 1.0,
+        clearcoatRoughness: 0.1,
+        transparent: true,
+        opacity: 0.85,
+        side: THREE.DoubleSide
+    });
+
+    const materialNeg = new THREE.MeshPhysicalMaterial({
+        color: NEG_COLOR,
+        metalness: 0.1,
+        roughness: 0.15,
+        clearcoat: 1.0,
+        clearcoatRoughness: 0.1,
+        transparent: true,
+        opacity: 0.85,
+        side: THREE.DoubleSide
+    });
+
+    const materialSp = new THREE.MeshPhysicalMaterial({
+        color: SP_COLOR,
+        metalness: 0.1,
+        roughness: 0.15,
+        clearcoat: 1.0,
+        clearcoatRoughness: 0.1,
+        transparent: true,
+        opacity: 0.85,
+        side: THREE.DoubleSide
+    });
+
+    // Marching Cubes
+    // Resolution defines the grid size. 80 is smooth and looks great.
+    const resolution = 80;
+    mcPos = new MarchingCubes(resolution, materialPos, true, true, 100000);
+    mcPos.position.set(0, 0, 0);
+    // Scale defines the world space bounds of the [0, 1] MarchingCubes volume.
+    // scale = 4 means the box goes from -2 to +2 in X, Y, Z.
+    mcPos.scale.set(4, 4, 4);
+    scene.add(mcPos);
+
+    mcNeg = new MarchingCubes(resolution, materialNeg, true, true, 100000);
+    mcNeg.position.set(0, 0, 0);
+    mcNeg.scale.set(4, 4, 4);
+    scene.add(mcNeg);
+
+    mcPzPos = new MarchingCubes(resolution, materialPos, true, true, 100000);
+    mcPzPos.position.set(0, 0, 0);
+    mcPzPos.scale.set(4, 4, 4);
+    scene.add(mcPzPos);
+
+    mcPzNeg = new MarchingCubes(resolution, materialNeg, true, true, 100000);
+    mcPzNeg.position.set(0, 0, 0);
+    mcPzNeg.scale.set(4, 4, 4);
+    scene.add(mcPzNeg);
+
+    mcSpIn = new MarchingCubes(resolution, materialSp, true, true, 100000);
+    mcSpIn.position.set(0, 0, 0);
+    mcSpIn.scale.set(4, 4, 4);
+    scene.add(mcSpIn);
+
+    mcSpOut = new MarchingCubes(resolution, materialSp, true, true, 100000);
+    mcSpOut.position.set(0, 0, 0);
+    mcSpOut.scale.set(4, 4, 4);
+    scene.add(mcSpOut);
+
+    // Nuclei (Small core spheres)
+    const coreMat = new THREE.MeshStandardMaterial({ color: CORE_COLOR, emissive: 0x444444 });
+    nucleusA = new THREE.Mesh(new THREE.SphereGeometry(0.06, 32, 32), coreMat);
+    nucleusB = new THREE.Mesh(new THREE.SphereGeometry(0.06, 32, 32), coreMat);
+    scene.add(nucleusA);
+    scene.add(nucleusB);
+
+    // Event Listeners
+    window.addEventListener('resize', onWindowResize);
+
+    distanceSlider.addEventListener('input', (e) => {
+        state.distance = parseFloat(e.target.value);
+        updateScene();
+    });
+
+    typeButtons.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            typeButtons.forEach(b => b.classList.remove('active'));
+            const target = e.currentTarget;
+            target.classList.add('active');
+            state.bondType = target.getAttribute('data-preset');
+            
+            // 由於切換了主要按鍵，重置所有未混成軌域的顯示狀態
+            state.showPy = false;
+            state.showPzSp = false;
+            state.showPz = false;
+            if (togglePyBtn) togglePyBtn.classList.remove('active-toggle');
+            if (togglePzSpBtn) togglePzSpBtn.classList.remove('active-toggle');
+            if (togglePzBtn) togglePzBtn.classList.remove('active-toggle');
+            
+            updateSubButtonsUI();
+            updateScene();
+        });
+    });
+
+    if (togglePyBtn) {
+        togglePyBtn.addEventListener('click', () => {
+            if (state.bondType !== 'sp_sp') return;
+            state.showPy = !state.showPy;
+            togglePyBtn.classList.toggle('active-toggle', state.showPy);
+            updateScene();
+        });
+    }
+
+    if (togglePzSpBtn) {
+        togglePzSpBtn.addEventListener('click', () => {
+            if (state.bondType !== 'sp_sp') return;
+            state.showPzSp = !state.showPzSp;
+            togglePzSpBtn.classList.toggle('active-toggle', state.showPzSp);
+            updateScene();
+        });
+    }
+
+    if (togglePzBtn) {
+        togglePzBtn.addEventListener('click', () => {
+            if (state.bondType !== 'sp2_sp2') return;
+            state.showPz = !state.showPz;
+            togglePzBtn.classList.toggle('active-toggle', state.showPz);
+            updateScene();
+        });
+    }
+
+    function updateSubButtonsUI() {
+        if (togglePzBtn) {
+            const active = state.bondType === 'sp2_sp2';
+            togglePzBtn.style.opacity = active ? '1' : '0.4';
+            togglePzBtn.style.cursor = active ? 'pointer' : 'not-allowed';
+        }
+        const spActive = state.bondType === 'sp_sp';
+        if (togglePyBtn) {
+            togglePyBtn.style.opacity = spActive ? '1' : '0.4';
+            togglePyBtn.style.cursor = spActive ? 'pointer' : 'not-allowed';
+        }
+        if (togglePzSpBtn) {
+            togglePzSpBtn.style.opacity = spActive ? '1' : '0.4';
+            togglePzSpBtn.style.cursor = spActive ? 'pointer' : 'not-allowed';
+        }
+    }
+
+    // Initial Update
+    updateSubButtonsUI();
+    updateScene();
+}
+
+function onWindowResize() {
+    const width = container.clientWidth;
+    const height = container.clientHeight;
+    camera.aspect = width / height;
+    camera.updateProjectionMatrix();
+    renderer.setSize(width, height);
+}
+
+// Map world coordinates to MarchingCubes [0, 1] space.
+function addPhaseLobe(mc, x, y, z, strength, subtract) {
+    // scale is 4, and MarchingCubes domain is [-1, 1], so world domain is [-4, 4].
+    // Mapped to [0, 1]: (X / 8) + 0.5
+    const cx = (x / 8) + 0.5;
+    const cy = (y / 8) + 0.5;
+    const cz = (z / 8) + 0.5;
+    
+    // Bounds check to avoid rendering artifacts at edge of volume
+    if (cx > 0.05 && cx < 0.95 && cy > 0.05 && cy < 0.95 && cz > 0.05 && cz < 0.95) {
+        mc.addBall(cx, cy, cz, strength, subtract);
+    }
+}
+
+// Helper to draw an elongated teardrop/petal shape in a generic 3D direction
+function addPetalDir(mc, cX, cY, cZ, dx, dy, dz, pOff, str, sub) {
+    // The user explicitly requested an "Ice Cream Cone" geometry:
+    // A perfectly straight conical body that ends in a fitted spherical top.
+    // To generate a straight Cone in Metaballs, the radius must grow linearly.
+    // Since metaball radius is proportional to sqrt(strength), strength must grow QUADRATICALLY.
+    
+    const steps = 12; // Dense packing for a flawless straight cone surface
+    const startOff = 0.2; // Start very close to the nucleus (cone tip)
+    const endOff = 2.4;   // End at the center of the outer cap
+    
+    const R_start = 0.15; // Tiny radius at the tip
+    const R_end = 1.0;    // Fat sphere for the ice-cream scoop top
+    
+    for (let i = 0; i < steps; i++) {
+        const t = i / (steps - 1);
+        const currentOff = startOff + (endOff - startOff) * t;
+        
+        // Linear radius -> Quadratic strength
+        const currentR = R_start + (R_end - R_start) * t;
+        const currentStr = currentR * currentR; 
+        
+        addPhaseLobe(mc, cX + dx * pOff * currentOff, cY + dy * pOff * currentOff, cZ + dz * pOff * currentOff, str * currentStr, sub);
+    }
+    
+    // Sharp negative carver to sever the absolute base exactly at the nucleus
+    addPhaseLobe(mc, cX - dx * pOff * 0.1, cY - dy * pOff * 0.1, cZ - dz * pOff * 0.1, -str * 2.5, sub * 0.8);
+}
+
+function updateScene() {
+    mcPos.reset();
+    mcNeg.reset();
+    mcPzPos.reset();
+    mcPzNeg.reset();
+    mcSpIn.reset();
+    mcSpOut.reset();
+
+    // Mapping distance 0 (far) to 100 (near)
+    // At far distance = 0, atoms are pulled far apart with absolute zero interaction 
+    // At near distance = 100, atoms are at ±0.20 for a deep merge
+    const maxDist = 2.2;
+    const minDist = 0.20;
+    const currentDist = maxDist - (state.distance / 100) * (maxDist - minDist);
+
+    const xA = -currentDist;
+    const xB = currentDist;
+
+    // Update nuclei positions
+    nucleusA.position.set(xA, 0, 0);
+    nucleusB.position.set(xB, 0, 0);
+
+    // Metaballs config
+    // Adjusting these changes the blob size and "stickiness"
+    const strength = 0.15; 
+    const subtract = 14; 
+    const pOffset = 0.40; // The center of p-orbital lobes relative to the nucleus
+
+    // s 軌域只需要單一顆球，為了讓它看起來跟 p 軌域（多顆球疊加）一樣大，我們需要增強它的強度
+    const sStrength = strength * 4.0; 
+
+    switch (state.bondType) {
+        case 'ss':
+            // Atom A: s-orbital (pos)
+            addPhaseLobe(mcPos, xA, 0, 0, sStrength, subtract);
+            // Atom B: s-orbital (pos)
+            addPhaseLobe(mcPos, xB, 0, 0, sStrength, subtract);
+            break;
+
+        case 'sp':
+            // Atom A: s-orbital (pos)
+            addPhaseLobe(mcPos, xA, 0, 0, sStrength, subtract);
+            // Atom B: p-orbital along X 
+            addPetalDir(mcPos, xB, 0, 0, -1, 0, 0, pOffset, strength, subtract); // Left (+)
+            addPetalDir(mcNeg, xB, 0, 0, 1, 0, 0, pOffset, strength, subtract);  // Right (-)
+            break;
+
+        case 'pp_sigma':
+            // Atom A: p-orbital along X (pos faces B)
+            addPetalDir(mcNeg, xA, 0, 0, -1, 0, 0, pOffset, strength, subtract); // Left (-)
+            addPetalDir(mcPos, xA, 0, 0, 1, 0, 0, pOffset, strength, subtract);  // Right (+)
+            // Atom B: p-orbital along X (pos faces A)
+            addPetalDir(mcPos, xB, 0, 0, -1, 0, 0, pOffset, strength, subtract); // Left (+)
+            addPetalDir(mcNeg, xB, 0, 0, 1, 0, 0, pOffset, strength, subtract);  // Right (-)
+            break;
+
+        case 'pp_pi':
+            // Atom A: p-orbital along Y (pos up, neg down)
+            addPetalDir(mcPos, xA, 0, 0, 0, 1, 0, pOffset, strength, subtract);  // Top (+)
+            addPetalDir(mcNeg, xA, 0, 0, 0, -1, 0, pOffset, strength, subtract); // Bottom (-)
+            // Atom B: p-orbital along Y (pos up, neg down)
+            addPetalDir(mcPos, xB, 0, 0, 0, 1, 0, pOffset, strength, subtract);  // Top (+)
+            addPetalDir(mcNeg, xB, 0, 0, 0, -1, 0, pOffset, strength, subtract); // Bottom (-)
+            break;
+
+        case 'sp2_sp2': {
+            const sq3_2 = Math.sqrt(3) / 2;
+
+            // Atom A: sp2 hybrid trio
+            addPetalDir(mcSpIn, xA, 0, 0, 1, 0, 0, pOffset, strength, subtract); // Bonding lobe
+            addPetalDir(mcSpOut, xA, 0, 0, -0.5, sq3_2, 0, pOffset, strength, subtract); // Outer lobe 1
+            addPetalDir(mcSpOut, xA, 0, 0, -0.5, -sq3_2, 0, pOffset, strength, subtract); // Outer lobe 2
+
+            // Atom B: sp2 hybrid trio
+            addPetalDir(mcSpIn, xB, 0, 0, -1, 0, 0, pOffset, strength, subtract); // Bonding lobe
+            addPetalDir(mcSpOut, xB, 0, 0, 0.5, sq3_2, 0, pOffset, strength, subtract);  // Outer lobe 1
+            addPetalDir(mcSpOut, xB, 0, 0, 0.5, -sq3_2, 0, pOffset, strength, subtract);  // Outer lobe 2
+
+            // Unhybridized pz orbitals if toggled (forming one pi bond)
+            if (state.showPz) {
+                const pStrength = strength * 1.6; 
+                addPetalDir(mcPzPos, xA, 0, 0, 0, 0, 1, pOffset, pStrength, subtract);   // Atom A Front (+)
+                addPetalDir(mcPzNeg, xA, 0, 0, 0, 0, -1, pOffset, pStrength, subtract);  // Atom A Back (-)
+                addPetalDir(mcPzPos, xB, 0, 0, 0, 0, 1, pOffset, pStrength, subtract);   // Atom B Front (+)
+                addPetalDir(mcPzNeg, xB, 0, 0, 0, 0, -1, pOffset, pStrength, subtract);  // Atom B Back (-)
+            }
+            break;
+        }
+
+        case 'sp_sp':
+            // Atom A: sp hybrid pair drawn as elongated teardrop petals
+            addPetalDir(mcSpIn, xA, 0, 0, 1, 0, 0, pOffset, strength, subtract);  // Right petal (faces inside)
+            addPetalDir(mcSpOut, xA, 0, 0, -1, 0, 0, pOffset, strength, subtract); // Left petal (faces outside)
+
+            // Atom B: sp hybrid pair drawn as elongated teardrop petals
+            addPetalDir(mcSpIn, xB, 0, 0, -1, 0, 0, pOffset, strength, subtract); // Left petal (faces inside)
+            addPetalDir(mcSpOut, xB, 0, 0, 1, 0, 0, pOffset, strength, subtract);  // Right petal (faces outside)
+
+            // Extra p orbitals if toggled (forming two pi bonds: py and pz)
+            const pStrengthSp = strength * 1.6; 
+            
+            if (state.showPy) {
+                // py orbitals (up/down) -> uses mcPos / mcNeg
+                addPetalDir(mcPos, xA, 0, 0, 0, 1, 0, pOffset, pStrengthSp, subtract);   // Atom A Top (+)
+                addPetalDir(mcNeg, xA, 0, 0, 0, -1, 0, pOffset, pStrengthSp, subtract);  // Atom A Bottom (-)
+                addPetalDir(mcPos, xB, 0, 0, 0, 1, 0, pOffset, pStrengthSp, subtract);   // Atom B Top (+)
+                addPetalDir(mcNeg, xB, 0, 0, 0, -1, 0, pOffset, pStrengthSp, subtract);  // Atom B Bottom (-)
+            }
+            
+            if (state.showPzSp) {
+                // pz orbitals (front/back) -> uses mcPzPos / mcPzNeg to NOT self-hybridize with py!
+                addPetalDir(mcPzPos, xA, 0, 0, 0, 0, 1, pOffset, pStrengthSp, subtract);   // Atom A Front (+)
+                addPetalDir(mcPzNeg, xA, 0, 0, 0, 0, -1, pOffset, pStrengthSp, subtract);  // Atom A Back (-)
+                addPetalDir(mcPzPos, xB, 0, 0, 0, 0, 1, pOffset, pStrengthSp, subtract);   // Atom B Front (+)
+                addPetalDir(mcPzNeg, xB, 0, 0, 0, 0, -1, pOffset, pStrengthSp, subtract);  // Atom B Back (-)
+            }
+            break;
+    }
+
+    mcPos.update();
+    mcNeg.update();
+    mcPzPos.update();
+    mcPzNeg.update();
+    mcSpIn.update();
+    mcSpOut.update();
+}
+
+function animate() {
+    requestAnimationFrame(animate);
+    controls.update();
+    renderer.render(scene, camera);
+}
+
+</script>
+</body>
+</html>
