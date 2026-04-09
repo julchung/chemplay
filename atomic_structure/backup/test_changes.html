@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>原子模型演進 (Atomic Model Evolution) TEST</title>
+    <style>
+        :root {
+            --bg-color: #0f172a; /* Slate 900 */
+            --panel-bg: #1e293b; /* Slate 800 */
+            --text-color: #f8fafc; /* Slate 50 */
+            --accent-color: #38bdf8; /* Sky 400 */
+            --nucleus-color: #ef4444; /* Red 500 */
+            --electron-color: #fbbf24; /* Amber 400 */
+            --danger-color: #f87171; /* Red 400 */
+            --bohr-color: #a855f7; /* Purple 500 */
+            --font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: var(--font-family);
+            overflow: hidden;
+        }
+
+        /* Top Navigation Tabs */
+        nav.tabs {
+            display: flex;
+            background-color: #020617;
+            padding: 0 20px;
+            gap: 5px;
+            border-bottom: 2px solid #1e293b;
+            z-index: 50;
+        }
+
+        .tab-btn {
+            padding: 12px 24px;
+            background: transparent;
+            border: none;
+            color: #64748b;
+            cursor: pointer;
+            font-size: 0.95rem;
+            font-weight: 600;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s;
+        }
+
+        .tab-btn:hover { color: #f8fafc; }
+        .tab-btn.active {
+            color: var(--accent-color);
+            border-bottom-color: var(--accent-color);
+            background: rgba(56, 189, 248, 0.05);
+        }
+
+        #app-container {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+        }
+
+        #sidebar {
+            width: 260px;
+            background-color: var(--panel-bg);
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.5);
+            z-index: 10;
+            overflow-y: auto;
+        }
+
+        h1 {
+            font-size: 1.2rem;
+            margin: 0 0 5px 0;
+            color: var(--accent-color);
+            line-height: 1.2;
+        }
+        
+        p.desc {
+            font-size: 0.8rem;
+            color: #cbd5e1;
+            line-height: 1.4;
+            margin: 0 0 5px 0;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            background: rgba(0,0,0,0.2);
+            padding: 10px;
+            border-radius: 8px;
+        }
+
+        .control-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        label {
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+
+        .value-display {
+            font-family: monospace;
+            background: #0f172a;
+            padding: 2px 6px;
+            border-radius: 4px;
+            color: var(--accent-color);
+        }
+
+        input[type="range"] {
+            width: 100%;
+            cursor: pointer;
+            accent-color: var(--accent-color);
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 5px;
+        }
+
+        button {
+            flex: 1;
+            padding: 8px;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: white;
+        }
+
+        #playBtn { background-color: #10b981; }
+        #playBtn:hover { background-color: #059669; }
+        #playBtn.playing { background-color: #f59e0b; }
+
+        #resetBtn { background-color: #64748b; }
+
+        /* Bohr Specific Styles */
+        .n-selector {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+        }
+
+        .n-btn {
+            background: #334155;
+            padding: 10px 0;
+        }
+        .n-btn.active {
+            background: var(--bohr-color);
+            box-shadow: 0 0 10px var(--bohr-color);
+        }
+
+        #jumpBtn {
+            background: var(--bohr-color);
+            margin-top: 10px;
+            font-size: 1rem;
+        }
+
+        .spectrum-panel {
+            margin-top: 10px;
+            background: #000;
+            border-radius: 6px;
+            padding: 10px;
+            font-family: monospace;
+            font-size: 0.8rem;
+        }
+
+        .spectrum-line {
+            display: flex;
+            justify-content: space-between;
+            padding: 2px 0;
+            border-bottom: 1px solid #1e293b;
+        }
+
+        .color-box {
+            width: 12px;
+            height: 12px;
+            border-radius: 2px;
+            display: inline-block;
+            margin-right: 5px;
+        }
+
+        #main-view {
+            flex: 1;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        #statusOverlay {
+            position: absolute;
+            top: 15%;
+            left: 50%;
+            transform: translate(-50%, 0);
+            font-size: 3rem;
+            font-weight: bold;
+            color: var(--danger-color);
+            text-shadow: 0 0 20px rgba(0,0,0,1), 0 0 10px rgba(248,113,113,0.8);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.5s ease-in-out;
+            text-align: center;
+            z-index: 20;
+        }
+
+        #statusOverlay.visible { opacity: 1; }
+
+        .hidden { display: none !important; }
+
+    </style>
+</head>
+<body>
+
+    <nav class="tabs">
+        <button class="tab-btn active" onclick="switchTab('classical')">古典模型 (Classical Collapse)</button>
+        <button class="tab-btn" onclick="switchTab('bohr')">波耳模型 (Bohr Model)</button>
+    </nav>
+
+    <div id="app-container">
+        <div id="sidebar">
+            <div id="classical-desc">
+                <h1>古典模型潰滅</h1>
+                <p class="desc">向心加速度輻射電磁波，導致能量損耗與軌道塌陷。</p>
+            </div>
+            <div id="bohr-desc" class="hidden">
+                <h1>波耳定態理論</h1>
+                <p class="desc">電子僅在量子化軌道運行，不輻射能量；僅在能階躍遷時吸收或放射光子。</p>
+            </div>
+
+            <!-- Classical Controls -->
+            <div id="classical-controls">
+                <div class="control-group">
+                    <div class="control-header">
+                        <label for="radiationRate">輻射衰減係數 (Radiation)</label>
+                        <span id="radVal" class="value-display">0.5</span>
+                    </div>
+                    <input type="range" id="radiationRate" min="0" max="5" step="0.05" value="0.5">
+                    <p style="font-size: 0.75rem; color:#94a3b8;">* 調至 2.0 以上則快速潰滅。</p>
+                </div>
+
+                <div class="control-group">
+                    <div class="control-header">
+                        <label for="initRadius">與原子核相對距離</label>
+                        <span id="radRadiusVal" class="value-display">250</span>
+                    </div>
+                    <input type="range" id="initRadius" min="100" max="400" step="10" value="250">
+                </div>
+
+                <div class="btn-group">
+                    <button id="playBtn">開始 (Play)</button>
+                    <button id="resetBtn">重置 (Reset)</button>
+                </div>
+            </div>
+
+            <!-- Bohr Controls -->
+            <div id="bohr-controls" class="hidden">
+                <div class="control-group">
+                    <label>選擇目標能階 (n)</label>
+                    <div class="n-selector">
+                        <button class="n-btn" onclick="selectN(1)">n=1</button>
+                        <button class="n-btn" onclick="selectN(2)">n=2</button>
+                        <button class="n-btn active" onclick="selectN(3)">n=3</button>
+                        <button class="n-btn" onclick="selectN(4)">n=4</button>
+                        <button class="n-btn" onclick="selectN(5)">n=5</button>
+                        <button class="n-btn" onclick="selectN(6)">n=6</button>
+                    </div>
+                    <button id="jumpBtn">執行躍遷 (Jump)</button>
+                </div>
+
+                <div class="control-group">
+                    <label>發射光譜紀錄 (Spectrum)</label>
+                    <div class="spectrum-panel" id="spectrumList">
+                        <div style="color: #64748b; text-align: center;">尚未產生譜線</div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <div id="main-view">
+            <canvas id="simCanvas"></canvas>
+            <div id="statusOverlay">原子潰滅！<br><span style="font-size: 1.5rem; color: #f8fafc;">Atom Collapsed</span></div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+        const container = document.getElementById('main-view');
+
+        // State
+        let currentTab = 'classical';
+        let isRunning = false;
+        let animationId;
+        let width, height, cx, cy;
+        
+        // Classical Variables
+        const k = 1000000;
+        const nucleusRadius = 15;
+        const electronRadius = 6;
+        let electron = { x: 0, y: 0, vx: 0, vy: 0 };
+        let trajectory = [];
+        let ripples = [];
+        let rippleCounter = 0; // For generation frequency
+        
+        // Bohr Variables
+        let currentN = 3;
+        let targetN = 3;
+        const bohrScale = 15; // r = n^2 * scale
+        let photons = [];
+
+        // UI Refs
+        const playBtn = document.getElementById('playBtn');
+        const radiationSlider = document.getElementById('radiationRate');
+        const radValDisplay = document.getElementById('radVal');
+        const initRadiusSlider = document.getElementById('initRadius');
+        const radRadiusValDisplay = document.getElementById('radRadiusVal');
+        const statusOverlay = document.getElementById('statusOverlay');
+        const spectrumList = document.getElementById('spectrumList');
+
+        function switchTab(tab) {
+            currentTab = tab;
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.innerText.includes(tab === 'classical' ? '古典' : '波耳')));
+            document.getElementById('classical-desc').classList.toggle('hidden', tab !== 'classical');
+            document.getElementById('bohr-desc').classList.toggle('hidden', tab !== 'bohr');
+            document.getElementById('classical-controls').classList.toggle('hidden', tab !== 'classical');
+            document.getElementById('bohr-controls').classList.toggle('hidden', tab !== 'bohr');
+            
+            // Reset Simulation on tab switch
+            isRunning = false;
+            cancelAnimationFrame(animationId);
+            playBtn.textContent = '開始 (Play)';
+            playBtn.classList.remove('playing');
+            statusOverlay.classList.remove('visible');
+            
+            if (tab === 'bohr') {
+                currentN = 3;
+                targetN = 3;
+                photons = [];
+                updateBohrButtons();
+            }
+            
+            resetSimulation();
+        }
+
+        function resize() {
+            width = container.clientWidth;
+            height = container.clientHeight;
+            canvas.width = width;
+            canvas.height = height;
+            cx = width / 2;
+            cy = height / 2;
+            if (!isRunning) draw();
+        }
+        window.addEventListener('resize', resize);
+
+        function resetSimulation() {
+            if (currentTab === 'classical') {
+                const r0 = parseFloat(initRadiusSlider.value);
+                electron.x = r0; electron.y = 0;
+                const v0 = Math.sqrt(k / r0);
+                electron.vx = 0; electron.vy = v0;
+                trajectory = []; ripples = []; rippleCounter = 0;
+            } else {
+                const r0 = currentN * currentN * bohrScale;
+                electron.x = r0; electron.y = 0;
+                const v0 = Math.sqrt(k / r0); // 這裡仍用圓周運動初速模擬運轉視覺
+                electron.vx = 0; electron.vy = v0;
+            }
+            draw();
+            updateInfo();
+        }
+
+        // Bohr Functions
+        function selectN(n) {
+            targetN = n;
+            updateBohrButtons();
+        }
+
+        function updateBohrButtons() {
+            document.querySelectorAll('.n-btn').forEach((btn, i) => {
+                btn.classList.toggle('active', (i + 1) === targetN);
+            });
+        }
+
+        document.getElementById('jumpBtn').onclick = () => {
+            if (currentN === targetN) return;
+            
+            const nFrom = currentN;
+            const nTo = targetN;
+            
+            // Physics: E = -13.6 / n^2
+            const eFrom = -13.6 / (nFrom * nFrom);
+            const eTo = -13.6 / (nTo * nTo);
+            const deltaE = eTo - eFrom;
+            
+            // Emission logic (From high to low)
+            if (deltaE < 0) {
+                const wavelength = 1240 / Math.abs(deltaE);
+                const color = nmToRGB(wavelength);
+                
+                // Add Photon
+                photons.push({
+                    x: electron.x, y: electron.y,
+                    vx: (electron.x / Math.hypot(electron.x, electron.y)) * 5,
+                    vy: (electron.y / Math.hypot(electron.x, electron.y)) * 5,
+                    color: color, r: 0, life: 1.0
+                });
+                
+                addSpectrumRecord(nFrom, nTo, wavelength, color);
+            }
+
+            // Quantum Jump (Instant)
+            currentN = targetN;
+            resetSimulation();
+            
+            // Start animation if it wasn't running
+            if (!isRunning) {
+                isRunning = true;
+                animationLoop();
+            }
+        };
+
+        function nmToRGB(nm) {
+            // Simple mapping for Hydrogen spectrum
+            if (nm > 650) return "#ff0000"; // H-alpha (656nm)
+            if (nm > 480) return "#00ffff"; // H-beta (486nm)
+            if (nm > 430) return "#4444ff"; // H-gamma (434nm)
+            if (nm > 410) return "#8800ff"; // H-delta (410nm)
+            return "#ffffff"; // UV or others
+        }
+
+        function addSpectrumRecord(from, to, wl, color) {
+            if (spectrumList.innerText.includes("尚未")) spectrumList.innerHTML = "";
+            const div = document.createElement('div');
+            div.className = 'spectrum-line';
+            div.innerHTML = `<span>n:${from}→${to}</span> <span style="color:${color}">${wl.toFixed(1)}nm</span>`;
+            spectrumList.prepend(div);
+        }
+
+        function updateInfo() {
+            // Logic removed as infoPanel was deleted
+        }
+
+        // Physics Engine
+        const SIM_SPEED = 12.0;
+        const TIME_STEP = (1/60) * SIM_SPEED;
+        const SUB_STEPS = 100;
+        const dt = TIME_STEP / SUB_STEPS;
+
+        function physicsStep(dt) {
+            const rSq = electron.x * electron.x + electron.y * electron.y;
+            const r = Math.sqrt(rSq);
+            
+            if (currentTab === 'classical') {
+                const speed = Math.hypot(electron.vx, electron.vy);
+                if (r < nucleusRadius || (speed < 0.1 && r < 150)) {
+                    isRunning = false;
+                    statusOverlay.classList.add('visible');
+                    ripples = [];
+                    electron.x = (r > 0.01) ? (electron.x / r) * (nucleusRadius - 2) : 1;
+                    electron.y = (r > 0.01) ? (electron.y / r) * (nucleusRadius - 2) : 0;
+                    electron.vx = 0; electron.vy = 0;
+                    draw(); // Final draw to clear ripples/trajectory remnants
+                    return;
+                }
+
+                const a_mag = k / rSq;
+                const ax = -a_mag * (electron.x / r);
+                const ay = -a_mag * (electron.y / r);
+                electron.vx += ax * dt;
+                electron.vy += ay * dt;
+
+                const radRate = parseFloat(radiationSlider.value);
+                const alpha = radRate * 0.01; 
+                const powerRadiated = alpha * (ax*ax + ay*ay);
+
+                if (radRate > 0) {
+                    const currentEnergy = 0.5 * (electron.vx**2 + electron.vy**2);
+                    const newEnergy = Math.max(0, currentEnergy - powerRadiated * dt);
+                    if (currentEnergy > 0) {
+                        const scale = Math.sqrt(newEnergy / currentEnergy);
+                        electron.vx *= scale; electron.vy *= scale;
+                    }
+
+                    // Generate Radiation Ripples
+                    rippleCounter++;
+                    if (rippleCounter % 200 === 0) {
+                        ripples.push({
+                            x: electron.x, 
+                            y: electron.y, 
+                            radius: electronRadius, 
+                            opacity: 0.6
+                        });
+                    }
+                }
+
+                electron.x += electron.vx * dt;
+                electron.y += electron.vy * dt;
+                
+                if (trajectory.length === 0 || Math.hypot(trajectory[trajectory.length-1].x - electron.x, trajectory[trajectory.length-1].y - electron.y) > 2) {
+                    trajectory.push({x: electron.x, y: electron.y});
+                }
+            } else {
+                // Bohr Model Physics (Constant Velocity Orbit)
+                const a_mag = k / rSq;
+                const ax = -a_mag * (electron.x / r);
+                const ay = -a_mag * (electron.y / r);
+                electron.vx += ax * dt;
+                electron.vy += ay * dt;
+                
+                // Rescale to maintain exact Bohr orbit speed
+                const vTarget = Math.sqrt(k / r);
+                const vCurr = Math.hypot(electron.vx, electron.vy);
+                electron.vx *= (vTarget / vCurr);
+                electron.vy *= (vTarget / vCurr);
+
+                electron.x += electron.vx * dt;
+                electron.y += electron.vy * dt;
+            }
+        }
+
+        function draw() {
+            ctx.fillStyle = '#0f172a'; // Solid background clear to prevent ripple ghosting
+            ctx.fillRect(0, 0, width, height);
+            
+            ctx.save();
+            ctx.translate(cx, cy);
+
+            if (currentTab === 'bohr') {
+                // Draw energy level circles
+                for (let n = 1; n <= 6; n++) {
+                    ctx.beginPath();
+                    ctx.arc(0, 0, n * n * bohrScale, 0, Math.PI * 2);
+                    ctx.strokeStyle = n === currentN ? 'rgba(168, 85, 247, 0.5)' : 'rgba(255,255,255,0.1)';
+                    ctx.setLineDash([5, 5]);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                    ctx.fillStyle = 'rgba(255,255,255,0.3)';
+                    ctx.font = '10px Arial';
+                    ctx.fillText('n=' + n, n * n * bohrScale + 5, 0);
+                }
+                
+                // Draw Photons
+                for (let i = photons.length - 1; i >= 0; i--) {
+                    const p = photons[i];
+                    ctx.beginPath();
+                    ctx.moveTo(p.x, p.y);
+                    // Wave effect
+                    ctx.strokeStyle = p.color;
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    for(let j=0; j<20; j++) {
+                        const dist = j * 2;
+                        const angle = Math.atan2(p.vy, p.vx);
+                        const wave = Math.sin(j * 0.5 - p.r * 0.5) * 5;
+                        const wx = p.x + (dist + p.r) * Math.cos(angle) + wave * Math.cos(angle + Math.PI/2);
+                        const wy = p.y + (dist + p.r) * Math.sin(angle) + wave * Math.sin(angle + Math.PI/2);
+                        if(j===0) ctx.moveTo(wx, wy); else ctx.lineTo(wx, wy);
+                    }
+                    ctx.stroke();
+                    p.r += 4; p.life -= 0.01;
+                    if (p.life <= 0) photons.splice(i, 1);
+                }
+            } else {
+                // Classical Trajectory
+                if (trajectory.length > 1) {
+                    ctx.beginPath();
+                    ctx.moveTo(trajectory[0].x, trajectory[0].y);
+                    for(let i=1; i<trajectory.length; i++) ctx.lineTo(trajectory[i].x, trajectory[i].y);
+                    ctx.strokeStyle = 'rgba(251, 191, 36, 0.3)';
+                    ctx.lineWidth = 1.5;
+                    ctx.stroke();
+                }
+
+                // Draw Radiation Ripples (EM Waves)
+                for (let i = ripples.length - 1; i >= 0; i--) {
+                    const r = ripples[i];
+                    ctx.beginPath();
+                    ctx.arc(r.x, r.y, r.radius, 0, Math.PI * 2);
+                    ctx.strokeStyle = `rgba(56, 189, 248, ${r.opacity})`; // Sky 400
+                    ctx.lineWidth = 1;
+                    ctx.stroke();
+                    
+                    r.radius += 0.8; // Reduced expansion speed (was 1.5)
+                    r.opacity -= 0.01; // Increased fade rate (was 0.005)
+                    if (r.opacity <= 0) ripples.splice(i, 1);
+                }
+            }
+
+            // Central Nucleus
+            ctx.beginPath();
+            ctx.arc(0, 0, nucleusRadius, 0, Math.PI * 2);
+            ctx.fillStyle = 'var(--nucleus-color)';
+            ctx.fill();
+            ctx.fillStyle = 'white'; ctx.font = 'bold 16px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.fillText('+', 0, 0);
+            
+            // Electron
+            ctx.beginPath();
+            ctx.arc(electron.x, electron.y, electronRadius, 0, Math.PI * 2);
+            ctx.fillStyle = 'var(--electron-color)';
+            ctx.fill();
+            ctx.fillStyle = 'black'; ctx.font = 'bold 14px Arial';
+            ctx.fillText('-', electron.x, electron.y - 1);
+
+            ctx.restore();
+        }
+
+        function animationLoop() {
+            if (!isRunning) return;
+            for(let i=0; i<SUB_STEPS; i++) physicsStep(dt);
+            draw();
+            updateInfo();
+            animationId = requestAnimationFrame(animationLoop);
+        }
+
+        // Classical Controls
+        playBtn.onclick = () => {
+            isRunning = !isRunning;
+            playBtn.textContent = isRunning ? '暫停 (Pause)' : '繼續 (Play)';
+            playBtn.classList.toggle('playing', isRunning);
+            if (isRunning) animationLoop();
+        };
+
+        resetBtn.onclick = () => {
+            isRunning = false;
+            cancelAnimationFrame(animationId);
+            playBtn.textContent = '開始 (Play)';
+            playBtn.classList.remove('playing');
+            statusOverlay.classList.remove('visible');
+            resetSimulation();
+        };
+
+        radiationSlider.oninput = (e) => { radValDisplay.textContent = e.target.value; };
+        initRadiusSlider.oninput = (e) => { radRadiusValDisplay.textContent = e.target.value; resetSimulation(); };
+
+        resize();
+        resetSimulation();
+
+    </script>
+</body>
+</html>

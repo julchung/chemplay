@@ -1,0 +1,1023 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>波耳原子模型 (Bohr Atom Model)</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --panel-bg: #1e293b;
+            --text-color: #f8fafc;
+            --bohr-color: #a855f7;
+            --nucleus-color: #ef4444;
+            --electron-color: #fbbf24;
+            --font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            display: flex; flex-direction: column; height: 100vh;
+            background: #020617; color: var(--text-color);
+            font-family: var(--font-family); overflow: hidden;
+        }
+
+        /* ── Top Row (Info + Orbit + Diagram) ── */
+        #top-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            width: 100%;
+            flex-shrink: 0;
+            background: #020617;
+        }
+
+        #info-col {
+            display: flex; flex-direction: column;
+            background: var(--panel-bg);
+            border-right: 2px solid #334155;
+            overflow: hidden;
+        }
+        #orbit-col {
+            display: flex; flex-direction: column;
+            border-right: 1px solid #334155;
+            background: #020617;
+        }
+        #diagram-col {
+            display: flex; flex-direction: column;
+            background: #020617;
+        }
+
+        /* Canvas wrappers */
+        #orbit-col .canvas-wrap {
+            position: relative; background: #020617;
+            width: 100%; aspect-ratio: 1 / 1;
+        }
+        #orbit-col canvas {
+            width: 100%; height: 100%; display: block; cursor: crosshair;
+        }
+        #diagram-col .canvas-wrap {
+            background: #020617; position: relative;
+            width: 100%; aspect-ratio: 1 / 1;
+        }
+        #diagram-col canvas { width: 100%; height: 100%; display: block; }
+
+        /* Info body scroll area */
+        #info-col .info-body {
+            padding: 20px; display: flex; flex-direction: column; gap: 16px;
+            overflow-y: auto;
+            width: 100%; aspect-ratio: 1 / 1;
+        }
+
+        .formula-box {
+            background: #000; padding: 12px; border-radius: 8px;
+            text-align: center; font-family: 'Cambria Math','Times New Roman',serif;
+            font-style: italic; font-size: 1.3rem; color: #fff;
+            border: 1px solid #334155;
+        }
+
+        .info-card {
+            background: rgba(0,0,0,0.25); padding: 14px; border-radius: 10px;
+            border-left: 4px solid var(--bohr-color);
+        }
+        .info-card .label { font-size: 1.05rem; color: #94a3b8; margin-bottom: 4px; font-weight: 600; }
+        .info-card .value { font-size: 1.6rem; font-weight: 700; color: var(--bohr-color); font-family: monospace; }
+        .info-card .calc {
+            font-size: 1rem; color: #e2e8f0; margin-top: 6px;
+            font-family: 'Cambria Math','Times New Roman',serif; font-style: italic;
+        }
+
+        .transition-card {
+            background: rgba(251,191,36,0.08); padding: 14px; border-radius: 10px;
+            border-left: 4px solid var(--electron-color);
+        }
+        .transition-card .label { font-size: 1.05rem; color: #94a3b8; margin-bottom: 6px; font-weight: 600; }
+        .transition-card .desc { font-size: 1rem; color: #e2e8f0; line-height: 1.6; }
+        .transition-card .energy-val { font-size: 1.3rem; font-weight: 700; color: var(--electron-color); }
+        .transition-card .absorb { color: #60a5fa; }
+        .transition-card .emit { color: #f87171; }
+
+        .math-formula {
+            margin-top: 12px; padding: 10px; background: #000; border-radius: 8px;
+            font-family: 'Cambria Math','Times New Roman',serif; font-style: italic;
+            color: #e2e8f0; font-size: 1.05rem; line-height: 2;
+            text-align: center;
+        }
+        .frac { display: inline-block; text-align: center; vertical-align: middle; }
+        .frac-num { display: block; border-bottom: 1px solid #94a3b8; padding: 0 4px 2px; }
+        .frac-den { display: block; padding: 2px 4px 0; }
+
+        .hint { font-size: 0.8rem; color: #64748b; margin-top: auto; padding-top: 10px; border-top: 1px solid #334155; }
+
+        /* ── Bottom Row (Spectra) ── */
+        #bottom-row {
+            flex: 1;
+            background: #020617;
+            border-top: 2px solid #1e293b;
+            display: flex; flex-direction: column;
+            padding: 10px 18px; gap: 10px;
+            min-height: 0;
+        }
+        .spectrum-bar-wrap {
+            flex: 1; display: flex; flex-direction: column; gap: 4px;
+            min-height: 0; width: 100%;
+        }
+        .spectrum-bar-label {
+            color: #94a3b8; font-size: 0.8rem; font-weight: 600;
+            letter-spacing: 0.04em; flex-shrink: 0;
+        }
+        .spec-canvas-wrap {
+            flex: 1; position: relative; min-height: 0; max-height: 85px;
+            width: 100%; border-radius: 2px; overflow: hidden;
+        }
+        .spec-canvas-wrap canvas {
+            width: 100%; height: 100%; display: block; position: absolute; top:0; left:0;
+        }
+
+        /* Action Button for Show All Series */
+        #diagram-col { position: relative; }
+        .action-btn {
+            position: absolute; left: 10px; bottom: 10px;
+            background: rgba(30,41,59,0.8); color: #cbd5e1;
+            border: 1px solid #475569; padding: 4px 10px; border-radius: 6px;
+            font-size: 0.85rem; font-weight: 600; cursor: pointer;
+            transition: all 0.2s; z-index: 10;
+            line-height: 1.2; text-align: center;
+        }
+        .action-btn:hover { background: #334155; border-color: #94a3b8; color: #fff; }
+    </style>
+</head>
+<body>
+
+<div id="top-row">
+    <!-- Left 1/3: Info panel -->
+    <div id="info-col">
+    <div class="info-body">
+        <div class="formula-box">E<sub>n</sub> = −13.6 / n<sup>2</sup> (eV)</div>
+
+        <div class="info-card" style="display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 8px;">
+            <div><span class="label">目前軌域：</span> <span class="value" id="orbitN" style="font-size:1.4rem;">n = 1</span></div>
+            <div class="calc" id="orbitCalc" style="margin-top:0; font-size:1.15rem;">E<sub>1</sub> = −13.6 / 1<sup>2</sup> = <b>−13.60 eV</b></div>
+        </div>
+
+        <div class="transition-card" id="transitionCard" style="flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; border-left: none; border-top: 4px solid var(--electron-color);">
+            <div class="desc" id="transitionDesc" style="font-size: 1.15rem; text-align: center;">尚未發生躍遷</div>
+            <div class="math-formula" id="transFormula" style="display:none; font-size: 1.15rem; line-height: 1.8; padding: 15px; width: 100%;"></div>
+        </div>
+
+        <div class="hint">
+            * 在<b>電子所在的軌道環上按下右鍵</b>即可捕獲電子<br>
+            * 拖曳並對準目標軌道放開右鍵，完成能階躍遷<br>
+            <span style="color:#f87171;">※ 必須精準對準軌道環放開，否則電子會彈回原處</span>
+        </div>
+    </div>
+</div>
+
+<div id="orbit-col">
+    <div class="canvas-wrap"><canvas id="orbitCanvas"></canvas></div>
+</div>
+<div id="diagram-col">
+    <div class="canvas-wrap" id="diagramWrap"><canvas id="diagramCanvas"></canvas></div>
+    <button id="showAllBtn" class="action-btn">展示<br>完整系列</button>
+</div>
+
+</div> <!-- /#top-row -->
+
+
+<!-- Bottom row: spectra -->
+<div id="bottom-row">
+    <div class="spectrum-bar-wrap">
+        <div class="spectrum-bar-label">頻率 / 能量</div>
+        <div class="spec-canvas-wrap"><canvas id="specEnergyCanvas"></canvas></div>
+    </div>
+    <div class="spectrum-bar-wrap">
+        <div class="spectrum-bar-label">波長（nm）</div>
+        <div class="spec-canvas-wrap"><canvas id="specWaveCanvas"></canvas></div>
+    </div>
+</div>
+
+<script>
+    // ===== Orbit Canvas (Left) =====
+    const oCanvas = document.getElementById('orbitCanvas');
+    const oCtx = oCanvas.getContext('2d');
+    const oWrap = oCanvas.parentElement;
+
+    // ===== Diagram Canvas (Right) =====
+    const dCanvas = document.getElementById('diagramCanvas');
+    const dCtx = dCanvas.getContext('2d');
+    const dWrap = document.getElementById('diagramWrap');
+
+    // ===== Spectrum Canvases =====
+    const seCanvas = document.getElementById('specEnergyCanvas');
+    const seCtx = seCanvas.getContext('2d');
+    const swCanvas = document.getElementById('specWaveCanvas');
+    const swCtx = swCanvas.getContext('2d');
+
+    // ===== Info Panel Refs =====
+    const orbitNEl = document.getElementById('orbitN');
+    const orbitCalcEl = document.getElementById('orbitCalc');
+    const transDescEl = document.getElementById('transitionDesc');
+    const transCardEl = document.getElementById('transitionCard');
+
+    // ===== Physics State =====
+    const k = 1000000;
+    const nucleusR = 12, electronR = 6;
+    const SNAP_TOLERANCE = 8;   // px — must visually overlap the orbit ring
+    const HOVER_TOLERANCE = 14; // px — highlight orbit when cursor is near
+    let electron = { x: 0, y: 0, angle: 0, radius: 30 };
+    let isDragging = false;
+    let currentN = 1, prevN = 1;
+    let transitionArrow = null; // { fromN, toN } — persists until next capture
+    let hoverOrbit = null;      // orbit ring highlighted while dragging
+    let snapFailTimer = 0;      // countdown for "miss" flash message
+    let showFailedMessage = false; // flag specifically for formula area message
+
+    // ===== Show All Series State =====
+    let showAllMode = false;
+    const ALL_SERIES_TRANSITIONS = [
+        { name: '萊曼系', color: 'rgb(168,85,247)', toN: 1, fromNs: [2, 3, 4, 5, 6, Infinity] },
+        { name: '巴耳麥系', color: 'rgb(34,211,238)', toN: 2, fromNs: [3, 4, 5, 6, Infinity] },
+        { name: '帕申系', color: 'rgb(239,68,68)',   toN: 3, fromNs: [4, 5, 6, Infinity] },
+        { name: '布拉克系', color: 'rgb(234,179,8)',  toN: 4, fromNs: [5, 6, Infinity] }
+    ];
+
+    const bohrOrbits = [
+        { n: 1, ratio: 0.154, e: -13.6 },
+        { n: 2, ratio: 0.308, e: -3.4 },
+        { n: 3, ratio: 0.462, e: -1.51 },
+        { n: 4, ratio: 0.615, e: -0.85 },
+        { n: 5, ratio: 0.769, e: -0.54 },
+        { n: 6, ratio: 0.923, e: -0.378 },
+        { n: Infinity, ratio: 1.0, e: 0 }
+    ];
+
+    let ow, oh, ocx, ocy;
+    let dw, dh;
+    let maxOrbitR; // dynamically computed
+
+    function resize() {
+        const oR = oWrap.getBoundingClientRect();
+        const newOw = Math.floor(oR.width);
+        const newOh = Math.floor(oR.height);
+        if (Math.abs(oCanvas.width - newOw) > 1) oCanvas.width = newOw;
+        if (Math.abs(oCanvas.height - newOh) > 1) oCanvas.height = newOh;
+        ow = oCanvas.width; oh = oCanvas.height;
+        ocx = ow / 2; ocy = oh / 2;
+
+        // Scale orbits to fill ~90% of column (45% radius of smaller dimension)
+        maxOrbitR = Math.min(ow, oh) * 0.44;
+        bohrOrbits.forEach(o => { o.r = maxOrbitR * o.ratio; });
+        // Update electron radius to match current orbit
+        const curOrbit = bohrOrbits.find(o => o.n === currentN || (currentN === Infinity && o.n === Infinity));
+        if (curOrbit) electron.radius = curOrbit.r;
+
+        // Diagram canvas fills its wrapper completely
+        const dR = dWrap.getBoundingClientRect();
+        const newDw = Math.max(1, Math.floor(dR.width));
+        const newDh = Math.max(1, Math.floor(dR.height));
+        if (Math.abs(dCanvas.width - newDw) > 1) dCanvas.width = newDw;
+        if (Math.abs(dCanvas.height - newDh) > 1) dCanvas.height = newDh;
+        dw = dCanvas.width; dh = dCanvas.height;
+
+        // Spectrum canvases — sized to fit their wrappers dynamically
+        const bRow = document.getElementById('bottom-row');
+        const bRect = bRow.getBoundingClientRect();
+        const targetW = Math.max(100, Math.floor(bRect.width - 36)); // subtracting 18px padding * 2
+
+        const seWrap = seCanvas.parentElement;
+        const swWrap = swCanvas.parentElement;
+        const seH = Math.max(10, Math.floor(seWrap.getBoundingClientRect().height));
+        const swH = Math.max(10, Math.floor(swWrap.getBoundingClientRect().height));
+
+        if (Math.abs(seCanvas.width - targetW) > 1) seCanvas.width = targetW;
+        if (Math.abs(seCanvas.height - seH) > 1) seCanvas.height = seH;
+        if (Math.abs(swCanvas.width - targetW) > 1) swCanvas.width = targetW;
+        if (Math.abs(swCanvas.height - swH) > 1) swCanvas.height = swH;
+    }
+
+    function getMousePos(e) {
+        const rect = oCanvas.getBoundingClientRect();
+        const sx = oCanvas.width / rect.width;
+        const sy = oCanvas.height / rect.height;
+        // Match the centered origin used in drawOrbit
+        return { x: (e.clientX - rect.left) * sx - ocx, y: (e.clientY - rect.top) * sy - ocy };
+    }
+
+    // ===== Interaction =====
+    oCanvas.addEventListener('contextmenu', e => e.preventDefault());
+
+    oCanvas.addEventListener('mousedown', (e) => {
+        if (e.button !== 2) return; // Right-click only
+
+        const m = getMousePos(e);
+        const dCenter = Math.hypot(m.x, m.y);
+
+        // Clear transition state and failure message when user starts a new action
+        transitionArrow = null;
+        activeTransition = null;
+        showFailedMessage = false;
+
+        // User must click on the currently active orbit to capture
+        const currentO = bohrOrbits.find(o => o.n === currentN || (currentN === Infinity && o.n === Infinity));
+        if (currentO && Math.abs(dCenter - currentO.r) < 20) {
+            prevN = currentN;
+            electron.angle = Math.atan2(m.y, m.x);
+            electron.x = m.x; electron.y = m.y;
+            isDragging = true;
+            updateInfo();
+        }
+    });
+
+    window.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+        const m = getMousePos(e);
+        electron.x = m.x; electron.y = m.y;
+        // Detect which orbit (if any) the cursor is hovering near
+        const r = Math.hypot(m.x, m.y);
+        hoverOrbit = bohrOrbits.find(o => Math.abs(r - o.r) < HOVER_TOLERANCE && o.n !== prevN) || null;
+        // Update cursor to indicate snappable target
+        oCanvas.style.cursor = hoverOrbit ? 'cell' : 'grabbing';
+    });
+
+    window.addEventListener('mouseup', (e) => {
+        if (!isDragging) return;
+        isDragging = false;
+        oCanvas.style.cursor = 'crosshair';
+        const m = getMousePos(e);
+        const r = Math.hypot(m.x, m.y);
+        hoverOrbit = null;
+
+        // Only snap if cursor is within SNAP_TOLERANCE of an orbit ring
+        let nearest = null, minD = Infinity;
+        bohrOrbits.forEach(o => { const d = Math.abs(r - o.r); if (d < minD) { minD = d; nearest = o; } });
+
+        if (nearest && minD < SNAP_TOLERANCE) {
+            currentN = nearest.n;
+            electron.radius = nearest.r;
+            electron.angle = Math.atan2(m.y, m.x);
+            // Set transition arrow only if level actually changed
+            if (currentN !== prevN) {
+                transitionArrow = { fromN: prevN, toN: currentN };
+                // determine nLow/nHigh for spectrum highlighting
+                const nA = prevN === Infinity ? Infinity : prevN;
+                const nB = currentN === Infinity ? Infinity : currentN;
+                const nLow = Math.min(nA === Infinity ? 1e9 : nA, nB === Infinity ? 1e9 : nB);
+                const nHigh = Math.max(nA === Infinity ? 1e9 : nA, nB === Infinity ? 1e9 : nB);
+                activeTransition = {
+                    nLow: nLow >= 1e9 ? Infinity : nLow,
+                    nHigh: nHigh >= 1e9 ? Infinity : nHigh
+                };
+                activeGlow = 1.0;
+            }
+        } else {
+            // Miss — bounce back to original orbit, show message
+            currentN = prevN;
+            const orbit = bohrOrbits.find(o => o.n === currentN || (currentN === Infinity && o.n === Infinity));
+            electron.radius = orbit ? orbit.r : 30;
+            showFailedMessage = true;
+            snapFailTimer = 90; // Flash reminder on canvas
+        }
+        updateInfo();
+    });
+
+    // ===== Info Update =====
+    function updateInfo() {
+        const nLabel = currentN === Infinity ? '∞' : currentN;
+        orbitNEl.textContent = `n = ${nLabel}`;
+
+        const orbit = bohrOrbits.find(o => o.n === currentN || (currentN === Infinity && o.n === Infinity));
+        const eVal = orbit ? orbit.e : 0;
+
+        if (currentN === Infinity) {
+            orbitCalcEl.innerHTML = `E<sub>∞</sub> = 0 eV`;
+        } else {
+            orbitCalcEl.innerHTML = `E<sub>${currentN}</sub> = −13.6 / ${currentN}<sup>2</sup> = <b>${eVal.toFixed(2)} eV</b>`;
+        }
+
+        if (showFailedMessage) {
+            transDescEl.innerHTML = '<span style="color:#f87171; font-weight:bold;">✘ 無法完成躍遷</span>';
+            document.getElementById('transFormula').style.display = 'none';
+        } else if (transitionArrow) {
+            const { fromN, toN } = transitionArrow;
+            const fromLabel = fromN === Infinity ? '∞' : fromN;
+            const toLabel = toN === Infinity ? '∞' : toN;
+            const fromE = bohrOrbits.find(o => o.n === fromN || (fromN === Infinity && o.n === Infinity)).e;
+            const toE = bohrOrbits.find(o => o.n === toN || (toN === Infinity && o.n === Infinity)).e;
+            const dE = toE - fromE;
+
+            let typeText, typeClass;
+            if (dE > 0) {
+                typeText = '吸收能量 ↑'; typeClass = 'absorb';
+            } else {
+                typeText = '釋放光子 ↓'; typeClass = 'emit';
+            }
+            transDescEl.innerHTML =
+                `電子由能階 <b>n=${fromLabel}</b> 躍遷至 <b>n=${toLabel}</b><br>` +
+                `能量變化：<span class="energy-val ${typeClass}">${dE > 0 ? '+' : ''}${dE.toFixed(2)} eV（${typeText}）</span>`;
+
+            // Show fraction formula
+            const formulaEl = document.getElementById('transFormula');
+            formulaEl.style.display = 'block';
+
+            function frac(num, den) {
+                return `<span class="frac"><span class="frac-num">${num}</span><span class="frac-den">${den}</span></span>`;
+            }
+
+            if (toN === Infinity && fromN === Infinity) {
+                formulaEl.innerHTML = '|&Delta;E| = 0';
+            } else {
+                const dV = Math.abs(dE);
+                const toFrac = toN === Infinity ? '0' : `( ${frac('−13.6', toN + '<sup>2</sup>')} )`;
+                const fromFrac = fromN === Infinity ? '0' : `( ${frac('−13.6', fromN + '<sup>2</sup>')} )`;
+                formulaEl.innerHTML = 
+                    `<div style="margin-bottom: 8px;">|&Delta;E| = h&nu; = ${frac('hc', '&lambda;')}</div>` +
+                    `<div style="margin-bottom: 8px;">= | ${toFrac} &minus; ${fromFrac} |</div>` +
+                    `<div>= <b>${dV.toFixed(2)} eV</b></div>`;
+            }
+        } else {
+            transDescEl.innerHTML = '尚未發生躍遷';
+            document.getElementById('transFormula').style.display = 'none';
+        }
+    }
+
+    // ===== Button Logic =====
+    document.getElementById('showAllBtn').addEventListener('click', () => {
+        const btn = document.getElementById('showAllBtn');
+        if (!showAllMode) {
+            showAllMode = true;
+            transitionArrow = null; // Clear any single arrow
+            activeTransition = null;
+            btn.textContent = '重置';
+            btn.style.background = '#0ea5e9'; // Blue highlight
+            btn.style.color = '#fff';
+        } else {
+            location.reload();
+        }
+    });
+
+    // ===== Energy Level Y-Position =====
+    // n=1 near bottom, n=∞ near top, others by real energy proportion
+    function levelY(n) {
+        const topY = dh * 0.08;   // n=∞ position (very near top)
+        const botY = dh * 0.92;   // n=1 position (near bottom)
+        const e1 = -13.6, eInf = 0;
+        const orbit = bohrOrbits.find(o => o.n === n || (n === Infinity && o.n === Infinity));
+        const e = orbit ? orbit.e : 0;
+        // Linear interpolation based on real energy
+        const t = (e - e1) / (eInf - e1); // 0 at n=1, 1 at n=∞
+        return botY + (topY - botY) * t;
+    }
+
+    // ===== Spectrum bar physics helpers =====
+    // All possible transitions (n_low < n_high, including ∞)
+    const R_H = 1.097e7; // m^-1
+    const hc_eV_nm = 1239.8; // eV·nm
+
+    function getTransitions() {
+        const ns = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 20, Infinity];
+        const result = [];
+        for (let i = 0; i < ns.length; i++) {
+            for (let j = i + 1; j < ns.length; j++) {
+                const nLow = ns[i], nHigh = ns[j];
+                // ΔE = 13.6*(1/nLow² - 1/nHigh²)  [eV]
+                const invLow = (nLow === Infinity) ? 0 : 1 / (nLow * nLow);
+                const invHigh = (nHigh === Infinity) ? 0 : 1 / (nHigh * nHigh);
+                const dE = 13.6 * (invLow - invHigh); // always >0
+                // relative energy position 0~1 (max = 13.6 eV when n=1→∞)
+                const relE = dE / 13.6;
+                // wavelength in nm (λ = hc/ΔE)
+                const lambdaNm = hc_eV_nm / dE;
+                result.push({ nLow, nHigh, dE, relE, lambdaNm });
+            }
+        }
+        return result;
+    }
+    const ALL_TRANSITIONS = getTransitions();
+
+    // Visible light wavelength range (nm)
+    const VIS_MIN_NM = 380, VIS_MAX_NM = 740;
+    // On the relE axis, visible range corresponds to 5/36 ~ 1/4 (Balmer series limits)
+    const VIS_E_MIN = 5 / 36; // ΔE/13.6 for n=2→∞ (series limit)
+    const VIS_E_MAX = 1 / 4;  // ΔE/13.6 for n=1→2 (Lyman α — wrong; let's use wavelength conversion)
+    // Actually use exact nm limits mapped to relE axis
+    const relE_visMin = (hc_eV_nm / VIS_MAX_NM) / 13.6; // lowest energy = longest λ
+    const relE_visMax = (hc_eV_nm / VIS_MIN_NM) / 13.6; // highest energy = shortest λ
+
+    // Wave-length axis: show 50–10000 nm (covers UV→deep IR for hydrogen)
+    const WL_AXIS_MAX = 10000; // nm
+    // Actually: left = short λ (high energy), right = long λ (low energy)
+    const WL_AXIS_MIN = 50;   // nm
+
+    // Wavelength (nm) → colour string
+    function nmToColor(nm) {
+        if (nm < 380) return '#a855f7'; // Ultraviolet
+        if (nm > 740) return '#ef4444'; // Infrared
+
+        // rough hue mapping for visible range
+        let r, g, b;
+        if (nm >= 380 && nm < 440) { r = -(nm - 440) / 60; g = 0; b = 1; }
+        else if (nm < 490) { r = 0; g = (nm - 440) / 50; b = 1; }
+        else if (nm < 510) { r = 0; g = 1; b = -(nm - 510) / 20; }
+        else if (nm < 580) { r = (nm - 510) / 70; g = 1; b = 0; }
+        else if (nm < 645) { r = 1; g = -(nm - 645) / 65; b = 0; }
+        else             { r = 1; g = 0; b = 0; }
+        // intensity rolloff at edges
+        let factor = 1;
+        if (nm >= 380 && nm < 420) factor = 0.3 + 0.7 * (nm - 380) / 40;
+        else if (nm >= 700 && nm <= 740) factor = 0.3 + 0.7 * (740 - nm) / 40;
+        const ir = Math.round(255 * r * factor);
+        const ig = Math.round(255 * g * factor);
+        const ib = Math.round(255 * b * factor);
+        return `rgb(${ir},${ig},${ib})`;
+    }
+
+    // Track the "active" transition (lights up spectrum lines)
+    let activeTransition = null; // { nLow, nHigh } set on mouseup if level changed
+    let activeGlow = 0;         // 0..1 fade
+
+    // ===== Shared spectrum helpers =====
+    // Greedy stagger: sort items by x, assign to 3 height levels with min gap
+    function assignStaggerLevels(items, minGap) {
+        const sorted = [...items].sort((a, b) => a.x - b.x);
+        const levelRight = [-9999, -9999, -9999];
+        sorted.forEach(item => {
+            let best = 0;
+            let bestRoom = item.x - levelRight[0];
+            for (let l = 1; l < 3; l++) {
+                const room = item.x - levelRight[l];
+                if (room > bestRoom) { bestRoom = room; best = l; }
+            }
+            item.level = best;
+            levelRight[best] = item.x + minGap;
+        });
+    }
+
+    // ===== Draw Energy Spectrum Bar =====
+    function drawSpecEnergy() {
+        const w = seCanvas.width, h = seCanvas.height;
+        // Move BAR_Y back up to ensure it's visible even on small canvases
+        const BAR_Y  = 20; 
+        seCtx.clearRect(0, 0, w, h);
+        seCtx.fillStyle = '#000';
+        seCtx.fillRect(0, 0, w, h);
+
+        // Draw Series Boxes (ㄇ-shape on top)
+        const seriesData = [
+            { n: 1, name: '萊曼系', color: '168,85,247', roof: 2, legBot: 12 }, // Purple
+            { n: 2, name: '巴耳麥系', color: '34,211,238', roof: 2, legBot: 12 }, // Cyan
+            { n: 3, name: '帕申系', color: '239,68,68',   roof: 10, legBot: 18 }, // Red
+            { n: 4, name: '布拉克系', color: '234,179,8',  roof: 2, legBot: 18 }  // Yellow
+        ];
+
+        seriesData.forEach(s => {
+            const relHigh = 1 / (s.n * s.n);
+            const relLow = relHigh - 1 / ((s.n + 1) * (s.n + 1));
+            const xMin = Math.round(relLow * w);
+            const xMax = Math.round(relHigh * w);
+            
+            seCtx.strokeStyle = `rgba(${s.color}, 0.8)`;
+            seCtx.lineWidth = 1.2;
+            seCtx.beginPath();
+            seCtx.moveTo(xMin, s.legBot);
+            seCtx.lineTo(xMin, s.roof);
+            seCtx.lineTo(xMax, s.roof);
+            seCtx.lineTo(xMax, s.legBot);
+            seCtx.stroke();
+            
+            seCtx.fillStyle = `rgba(${s.color}, 0.9)`;
+            seCtx.font = '11px Arial';
+            seCtx.textAlign = 'center';
+            seCtx.textBaseline = 'top';
+            seCtx.fillText(s.name, (xMin + xMax) / 2, s.roof + 1);
+        });
+
+        const pulse = activeTransition ? (0.75 + 0.25 * Math.sin(Date.now() / 380)) : 0;
+        const allItems = ALL_TRANSITIONS
+            .filter(tr => tr.lambdaNm <= 10000)
+            .map(tr => ({
+                tr,
+                x: Math.round(tr.relE * w),
+                isActive: activeTransition && tr.nLow === activeTransition.nLow && tr.nHigh === activeTransition.nHigh
+            }));
+
+        allItems.forEach(item => {
+            const { tr, x, isActive } = item;
+            const lambdaCol = nmToColor(tr.lambdaNm);
+            
+            let strokeCol = 'rgba(140,140,140,0.45)';
+            if (showAllMode) {
+                const s = ALL_SERIES_TRANSITIONS.find(ser => ser.toN === tr.nLow);
+                if (s) strokeCol = s.color.replace('rgb', 'rgba').replace(')', ', 0.6)');
+            }
+
+            seCtx.strokeStyle = strokeCol;
+            seCtx.lineWidth = 1;
+            seCtx.beginPath(); seCtx.moveTo(x, BAR_Y); seCtx.lineTo(x, h); seCtx.stroke();
+
+            if (isActive) {
+                const gc = lambdaCol || '#fff';
+                
+                // Draw active highlighted line overlay
+                seCtx.save();
+                seCtx.shadowBlur = 10; seCtx.shadowColor = gc;
+                seCtx.strokeStyle = gc;
+                seCtx.lineWidth = 3.5;
+                seCtx.globalAlpha = pulse;
+                seCtx.beginPath(); seCtx.moveTo(x, BAR_Y); seCtx.lineTo(x, h); seCtx.stroke();
+                seCtx.restore();
+
+                // Draw text right above the line
+                const lowL  = tr.nLow  === Infinity ? '∞' : tr.nLow;
+                const highL = tr.nHigh === Infinity ? '∞' : tr.nHigh;
+                const label = `${lowL}→${highL}`;
+                seCtx.save();
+                seCtx.fillStyle = '#fff';
+                seCtx.font = 'bold 13px Arial';
+                seCtx.textAlign = 'center'; seCtx.textBaseline = 'bottom';
+                seCtx.globalAlpha = Math.max(0.7, pulse);
+                seCtx.fillText(label, x, BAR_Y - 4);
+                seCtx.restore();
+            }
+        });
+    }
+
+    // ===== Draw Wavelength Spectrum Bar =====
+    function drawSpecWave() {
+        const w = swCanvas.width, h = swCanvas.height;
+        const BAR_Y  = 20;
+        swCtx.clearRect(0, 0, w, h);
+        swCtx.fillStyle = '#000';
+        swCtx.fillRect(0, 0, w, h);
+
+        const logMin = Math.log(WL_AXIS_MIN), logMax = Math.log(WL_AXIS_MAX);
+        function nmToX(nm) {
+            return Math.round(((Math.log(nm) - logMin) / (logMax - logMin)) * w);
+        }
+
+        // Draw Series Boxes (ㄇ-shape on top)
+        const seriesDataW = [
+            { n: 1, name: '萊曼系', color: '168,85,247', roof: 2, legBot: 12 },
+            { n: 2, name: '巴耳麥系', color: '34,211,238', roof: 2, legBot: 12 },
+            { n: 3, name: '帕申系', color: '239,68,68',   roof: 10, legBot: 18 },
+            { n: 4, name: '布拉克系', color: '234,179,8',  roof: 2, legBot: 18 }
+        ];
+
+        seriesDataW.forEach(s => {
+            const eHigh = 13.6 / (s.n * s.n);
+            const eLow = 13.6 * (1 / (s.n * s.n) - 1 / ((s.n + 1) * (s.n + 1)));
+            const wLow = 1239.8 / eHigh;
+            const wHigh = 1239.8 / eLow;
+            
+            const xMin = nmToX(wLow);
+            const xMax = nmToX(wHigh);
+            
+            swCtx.strokeStyle = `rgba(${s.color}, 0.8)`;
+            swCtx.lineWidth = 1.2;
+            swCtx.beginPath();
+            swCtx.moveTo(xMin, s.legBot);
+            swCtx.lineTo(xMin, s.roof);
+            swCtx.lineTo(xMax, s.roof);
+            swCtx.lineTo(xMax, s.legBot);
+            swCtx.stroke();
+            
+            swCtx.fillStyle = `rgba(${s.color}, 0.9)`;
+            swCtx.font = '11px Arial';
+            swCtx.textAlign = 'center';
+            swCtx.textBaseline = 'top';
+            swCtx.fillText(s.name, (xMin + xMax) / 2, s.roof + 1);
+        });
+
+        const pulse = activeTransition ? (0.75 + 0.25 * Math.sin(Date.now() / 380)) : 0;
+        const allItems = ALL_TRANSITIONS
+            .filter(tr => isFinite(tr.lambdaNm) && tr.lambdaNm >= WL_AXIS_MIN && tr.lambdaNm <= WL_AXIS_MAX)
+            .map(tr => ({
+                tr,
+                x: nmToX(tr.lambdaNm),
+                isActive: activeTransition && tr.nLow === activeTransition.nLow && tr.nHigh === activeTransition.nHigh
+            }));
+
+        allItems.forEach(item => {
+            const { tr, x, isActive } = item;
+            const lambdaCol = nmToColor(tr.lambdaNm);
+            
+            let strokeCol = 'rgba(140,140,140,0.45)';
+            if (showAllMode) {
+                const s = ALL_SERIES_TRANSITIONS.find(ser => ser.toN === tr.nLow);
+                if (s) strokeCol = s.color.replace('rgb', 'rgba').replace(')', ', 0.6)');
+            }
+
+            // Always draw base structure
+            swCtx.strokeStyle = strokeCol;
+            swCtx.lineWidth = 1;
+            swCtx.beginPath(); swCtx.moveTo(x, BAR_Y); swCtx.lineTo(x, h); swCtx.stroke();
+
+            if (isActive) {
+                const gc = lambdaCol || '#fff';
+                swCtx.save();
+                swCtx.shadowBlur = 10; swCtx.shadowColor = gc;
+                swCtx.strokeStyle = gc;
+                swCtx.lineWidth = 3.5;
+                swCtx.globalAlpha = pulse;
+                swCtx.beginPath(); swCtx.moveTo(x, BAR_Y); swCtx.lineTo(x, h); swCtx.stroke();
+                swCtx.restore();
+
+                // Draw Text directly above
+                const nmLabel = Math.round(tr.lambdaNm) + 'nm';
+                swCtx.save();
+                swCtx.fillStyle = '#fff';
+                swCtx.font = 'bold 13px Arial';
+                swCtx.textAlign = 'center';
+                swCtx.textBaseline = 'bottom';
+                swCtx.globalAlpha = Math.max(0.7, pulse);
+                swCtx.fillText(nmLabel, x, BAR_Y - 4);
+                swCtx.restore();
+            }
+        });
+    }
+
+    // ===== Draw Orbit (Left) =====
+    function drawOrbit() {
+        oCtx.fillStyle = '#0f172a';
+        oCtx.fillRect(0, 0, ow, oh);
+        oCtx.save();
+        // Perfectly center the diagram
+        oCtx.translate(ocx, ocy);
+
+        bohrOrbits.forEach((o, idx) => {
+            const isCurrent = !showAllMode && (o.n === currentN);
+            const isPrev = !showAllMode && transitionArrow && (o.n === transitionArrow.fromN);
+            const isHover = isDragging && hoverOrbit && (o.n === hoverOrbit.n);
+
+            oCtx.beginPath();
+            oCtx.arc(0, 0, o.r, 0, Math.PI * 2);
+            if (isHover) {
+                // Pulsing cyan glow to indicate valid drop target
+                const pulse = 0.6 + 0.4 * Math.sin(Date.now() / 150);
+                oCtx.strokeStyle = `rgba(34,211,238,${pulse})`;
+                oCtx.shadowBlur = 18;
+                oCtx.shadowColor = 'rgba(34,211,238,0.8)';
+                oCtx.lineWidth = 4;
+            } else {
+                oCtx.strokeStyle = isCurrent ? 'rgba(168,85,247,0.9)' : isPrev ? 'rgba(74,222,128,0.8)' : 'rgba(255,255,255,0.15)';
+                oCtx.lineWidth = (isCurrent || isPrev) ? 3 : 1.5;
+            }
+            if (o.n === Infinity) oCtx.setLineDash([8, 8]);
+            oCtx.stroke();
+            oCtx.setLineDash([]);
+            oCtx.shadowBlur = 0;
+
+            // Labels positioned directly on the orbit at 30 degrees radial offset
+            oCtx.fillStyle = isHover ? '#22d3ee' : isCurrent ? '#a855f7' : isPrev ? '#4ade80' : 'rgba(255,255,255,0.6)';
+            oCtx.font = (isCurrent || isPrev || isHover) ? 'bold 16px Arial' : '14px Arial';
+            oCtx.textAlign = 'center'; oCtx.textBaseline = 'middle';
+            const labelText = o.n === Infinity ? 'n=∞' : o.n.toString();
+            
+            const angle = -Math.PI / 6; // 30 degrees up
+            const dist = o.n === Infinity ? o.r + 20 : o.r; // Shift n=∞ outward
+            const lx = dist * Math.cos(angle);
+            const ly = dist * Math.sin(angle);
+
+            // Background rectangle for text contrast
+            const tw = oCtx.measureText(labelText).width;
+            oCtx.fillStyle = '#0f172a'; // match background
+            oCtx.fillRect(lx - (tw/2) - 3, ly - 9, tw + 6, 18);
+            
+            // Draw text
+            oCtx.fillStyle = isHover ? '#22d3ee' : isCurrent ? '#a855f7' : isPrev ? '#4ade80' : 'rgba(255,255,255,0.7)';
+            oCtx.fillText(labelText, lx, ly);
+        });
+
+        // "Miss" flash message when electron was not dropped on an orbit
+        if (snapFailTimer > 0) {
+            snapFailTimer--;
+            const alpha = Math.min(1, snapFailTimer / 20);
+            oCtx.font = 'bold 17px Arial';
+            oCtx.textAlign = 'center'; oCtx.textBaseline = 'middle';
+            oCtx.fillStyle = `rgba(248,113,113,${alpha})`;
+            oCtx.fillText('⚠ 請精準對準軌道放開！', 0, -maxOrbitR - 20);
+        }
+
+        // Nucleus
+        oCtx.beginPath(); oCtx.arc(0, 0, nucleusR, 0, Math.PI * 2);
+        oCtx.fillStyle = '#ef4444'; oCtx.fill();
+        oCtx.fillStyle = 'white'; oCtx.font = 'bold 14px Arial'; oCtx.textAlign = 'center'; oCtx.textBaseline = 'middle';
+        oCtx.fillText('+', 0, 0);
+
+        // ===== All Series Transitions Layer =====
+        if (showAllMode) {
+            let totalTr = 0;
+            ALL_SERIES_TRANSITIONS.forEach(series => {
+                series.fromNs.forEach(fN => {
+                    const fromO = bohrOrbits.find(o => o.n === fN);
+                    const toO = bohrOrbits.find(o => o.n === series.toN);
+                    if (fromO && toO) {
+                        oCtx.save();
+                        // Rotate each transition by 4 degrees for better visual distinction
+                        oCtx.rotate(totalTr * 4 * (Math.PI / 180));
+                        
+                        oCtx.beginPath();
+                        oCtx.moveTo(fromO.r, 0);
+                        oCtx.lineTo(toO.r, 0);
+                        oCtx.strokeStyle = series.color;
+                        oCtx.lineWidth = 1.5;
+                        oCtx.globalAlpha = 0.6;
+                        oCtx.stroke();
+                        
+                        // Small arrow head at destination
+                        oCtx.beginPath();
+                        oCtx.moveTo(toO.r + 5, -3);
+                        oCtx.lineTo(toO.r, 0);
+                        oCtx.lineTo(toO.r + 5, 3);
+                        oCtx.stroke();
+                        
+                        oCtx.restore();
+                        totalTr++;
+                    }
+                });
+            });
+        }
+
+        // Electron (hidden in Show All mode)
+        if (!showAllMode) {
+            oCtx.beginPath();
+            oCtx.arc(electron.x, electron.y, electronR + (isDragging ? 2 : 0), 0, Math.PI * 2);
+            oCtx.fillStyle = '#fbbf24';
+            if (isDragging) { oCtx.shadowBlur = 15; oCtx.shadowColor = '#fbbf24'; }
+            oCtx.fill(); oCtx.shadowBlur = 0;
+            oCtx.fillStyle = 'black'; oCtx.font = 'bold 12px Arial';
+            oCtx.fillText('-', electron.x, electron.y - 1);
+        }
+
+        oCtx.restore();
+    }
+
+    // ===== Draw Diagram (Right) =====
+    let glowPhase = 0; // for flickering animation
+
+    function drawDiagram() {
+        dCtx.fillStyle = '#0f172a';
+        dCtx.fillRect(0, 0, dw, dh);
+
+        // Energy level lines: centered in the column
+        const lineW = dw * 0.40;
+        const lineLX = (dw - lineW) / 2;
+        const lineRX = lineLX + lineW;
+        const arrowX = lineLX + lineW / 2; // center of lines
+
+        // Draw each energy level line
+        bohrOrbits.forEach(o => {
+            const y = levelY(o.n);
+            const isCurrent = !showAllMode && (o.n === currentN);
+            const isPrev = !showAllMode && transitionArrow && (o.n === transitionArrow.fromN);
+            const highlight = (isCurrent || isPrev) ? (isCurrent ? '#a855f7' : '#4ade80') : null;
+
+            // n=X label on the LEFT of the line
+            dCtx.fillStyle = highlight || 'rgba(255,255,255,0.6)';
+            dCtx.font = (isCurrent || isPrev) ? 'bold 15px Arial' : '15px Arial';
+            dCtx.textAlign = 'right'; dCtx.textBaseline = 'middle';
+            const nLabel = o.n === Infinity ? 'n=∞' : `n=${o.n}`;
+            const nXOffset = (o.n === 5) ? 35 : 8; // move n=5 left to avoid overlap
+            dCtx.fillText(nLabel, lineLX - nXOffset, y);
+
+            // Horizontal line
+            dCtx.beginPath();
+            dCtx.moveTo(lineLX, y); dCtx.lineTo(lineRX, y);
+            dCtx.strokeStyle = highlight || 'rgba(255,255,255,0.35)';
+            dCtx.lineWidth = (isCurrent || isPrev) ? 3 : 1.5;
+            if (o.n === Infinity) dCtx.setLineDash([6, 6]);
+            dCtx.stroke();
+            dCtx.setLineDash([]);
+
+            // E formula on the RIGHT of the line
+            dCtx.fillStyle = highlight || 'rgba(255,255,255,0.5)';
+            dCtx.font = (isCurrent || isPrev) ? 'bold 13px Arial' : '13px Arial';
+            dCtx.textAlign = 'left'; dCtx.textBaseline = 'middle';
+            let eLabel;
+            if (o.n === Infinity) {
+                eLabel = 'E∞=0';
+            } else {
+                eLabel = `E${o.n}=-13.6/${o.n}²`;
+            }
+            const eXOffset = (o.n === 5) ? 65 : 6; // move E5 even further right (to 65)
+            dCtx.fillText(eLabel, lineRX + eXOffset, y);
+
+            // Electron dot on current level
+            if (isCurrent && !isDragging && !showAllMode) {
+                dCtx.beginPath();
+                dCtx.arc(arrowX, y, 5, 0, Math.PI * 2);
+                dCtx.fillStyle = '#fbbf24'; dCtx.fill();
+            }
+        });
+
+        // ===== Multi-Transition Mode (Diagram) =====
+        if (showAllMode) {
+            let seriesIdx = 0;
+            ALL_SERIES_TRANSITIONS.forEach(series => {
+                // Wider series spacing (double from 20 to 40)
+                const hOffset = (seriesIdx - 1.5) * 42; 
+                const x = arrowX + hOffset;
+                
+                series.fromNs.forEach((fN, fIdx) => {
+                    const yStart = levelY(fN);
+                    const yEnd = levelY(series.toN);
+                    
+                    // Wider sub-arrow spacing (double from 3 to 6)
+                    const subOff = (fIdx - 2.5) * 6;
+                    const finalX = x + subOff;
+
+                    dCtx.beginPath();
+                    dCtx.moveTo(finalX, yStart);
+                    dCtx.lineTo(finalX, yEnd);
+                    dCtx.strokeStyle = series.color;
+                    dCtx.lineWidth = 2;
+                    dCtx.globalAlpha = 0.8;
+                    dCtx.stroke();
+
+                    // Arrow head
+                    dCtx.beginPath();
+                    dCtx.moveTo(finalX - 3, yEnd + 6);
+                    dCtx.lineTo(finalX, yEnd);
+                    dCtx.lineTo(finalX + 3, yEnd + 6);
+                    dCtx.stroke();
+                });
+                seriesIdx++;
+            });
+        }
+
+        // Transition Arrow with glow/flicker (Single mode)
+        if (!showAllMode && transitionArrow) {
+            const { fromN, toN } = transitionArrow;
+            const y1 = levelY(fromN);
+            const y2 = levelY(toN);
+            const goingUp = y2 < y1; // absorb = going up visually
+
+            // Glow animation phase
+            glowPhase += 0.05;
+            const glow = 0.5 + 0.5 * Math.sin(glowPhase * 3); // 0~1 pulsing
+            const baseColor = goingUp ? [96, 165, 250] : [248, 113, 113]; // blue / red
+            const r = baseColor[0], g = baseColor[1], b = baseColor[2];
+
+            // Outer glow (wider, more transparent)
+            dCtx.save();
+            dCtx.shadowBlur = 20 + glow * 15;
+            dCtx.shadowColor = `rgba(${r},${g},${b},${0.4 + glow * 0.4})`;
+
+            // Thick arrow shaft
+            dCtx.beginPath();
+            dCtx.moveTo(arrowX, y1);
+            dCtx.lineTo(arrowX, y2);
+            dCtx.strokeStyle = `rgba(${r},${g},${b},${0.6 + glow * 0.4})`;
+            dCtx.lineWidth = 5;
+            dCtx.stroke();
+            dCtx.restore();
+
+            // Text label on the far LEFT of the column
+            const midY = (y1 + y2) / 2;
+            const fromE = bohrOrbits.find(o => o.n === fromN || (fromN === Infinity && o.n === Infinity)).e;
+            const toE = bohrOrbits.find(o => o.n === toN || (toN === Infinity && o.n === Infinity)).e;
+            const dE = Math.abs(toE - fromE).toFixed(2);
+
+            dCtx.textAlign = 'left'; dCtx.textBaseline = 'middle';
+            dCtx.font = 'bold 17px Arial';
+            dCtx.fillStyle = goingUp ? '#93c5fd' : '#fca5a5';
+
+            const actionText = goingUp ? '吸收' : '放出';
+            dCtx.fillText(actionText, lineLX - 110, midY - 16);
+            dCtx.fillText(`${dE} eV`, lineLX - 110, midY + 16);
+        }
+    }
+
+    // ===== Draw both spectrum bars =====
+    function drawSpectra() {
+        // activeGlow no longer fades — persists until next mousedown
+        drawSpecEnergy();
+        drawSpecWave();
+    }
+
+    // ===== Physics Loop =====
+    const dt = (1/60) * 12.0;
+
+    function physicsStep() {
+        if (!isDragging) {
+            const orbit = bohrOrbits.find(o => o.n === currentN || (currentN === Infinity && o.n === Infinity));
+            const r = orbit ? orbit.r : 30;
+            const v = Math.sqrt(k / r / 10);
+            electron.angle += (v / r) * dt;
+            electron.x = Math.cos(electron.angle) * r;
+            electron.y = Math.sin(electron.angle) * r;
+        }
+    }
+
+    function loop() {
+        physicsStep();
+        drawOrbit();
+        drawDiagram();
+        drawSpectra();
+        requestAnimationFrame(loop);
+    }
+
+    window.addEventListener('resize', resize);
+    resize();
+    updateInfo();
+    loop();
+</script>
+</body>
+</html>

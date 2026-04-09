@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>古典原子模型與輻射損耗 (Classical Atom Model)</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --panel-bg: #1e293b;
+            --text-color: #f8fafc;
+            --accent-color: #38bdf8;
+            --nucleus-color: #ef4444;
+            --electron-color: #fbbf24;
+            --font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            height: 100vh;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: var(--font-family);
+            overflow: hidden;
+        }
+
+        #sidebar {
+            width: 280px;
+            background-color: var(--panel-bg);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.5);
+            z-index: 10;
+        }
+
+        h1 { font-size: 1.4rem; margin: 0; color: var(--accent-color); }
+        p.desc { font-size: 0.9rem; color: #cbd5e1; line-height: 1.5; margin: 0; }
+
+        .control-group {
+            background: rgba(0,0,0,0.2);
+            padding: 12px;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .control-header { display: flex; justify-content: space-between; align-items: center; }
+        label { font-size: 0.9rem; font-weight: 500; }
+        .value-display { font-family: monospace; background: #0f172a; padding: 2px 8px; border-radius: 4px; color: var(--accent-color); }
+
+        input[type="range"] { width: 100%; cursor: pointer; accent-color: var(--accent-color); }
+
+        .btn-group { display: flex; gap: 10px; margin-top: 10px; }
+        button { flex: 1; padding: 10px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; transition: all 0.2s; color: white; }
+        #playBtn { background-color: #10b981; }
+        #playBtn:hover { background-color: #059669; }
+        #playBtn.playing { background-color: #f59e0b; }
+        #resetBtn { background-color: #64748b; }
+
+        #main-view { flex: 1; position: relative; overflow: hidden; background: #020617; }
+        canvas { display: block; width: 100%; height: 100%; }
+
+        #statusOverlay {
+            position: absolute;
+            top: 20%; left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.85);
+            color: #ef4444;
+            padding: 30px 50px;
+            border-radius: 15px;
+            border: 2px solid #ef4444;
+            text-align: center;
+            font-size: 3rem;
+            font-weight: 800;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.5s;
+            z-index: 100;
+        }
+        #statusOverlay.visible { opacity: 1; }
+    </style>
+</head>
+<body>
+
+    <div id="sidebar">
+        <a href="bohr_derivation.html" style="color: var(--accent-color); text-decoration: none; font-size: 0.9rem; font-weight: bold; margin-bottom: -5px;">← 返回波耳模型推導</a>
+        <h1>古典原子模型</h1>
+        <p class="desc">根據古典電動力學，帶電電子做向心加速度運動時會輻射電磁波，導致能量損耗而墜入原子核。</p>
+        
+        <div class="control-group">
+            <div class="control-header">
+                <label for="radiationRate">輻射衰減係數</label>
+                <span id="radVal" class="value-display">0.5</span>
+            </div>
+            <input type="range" id="radiationRate" min="0" max="5" step="0.05" value="0.5">
+            <p style="font-size: 0.8rem; color:#94a3b8; margin:0;">* 調至 2.0 以上則快速潰滅。</p>
+        </div>
+
+        <div class="control-group">
+            <div class="control-header">
+                <label for="initRadius">與原子核相對距離</label>
+                <span id="radRadiusVal" class="value-display">250</span>
+            </div>
+            <input type="range" id="initRadius" min="100" max="400" step="10" value="250">
+        </div>
+
+        <div class="btn-group">
+            <button id="playBtn">開始 (Play)</button>
+            <button id="resetBtn">重置 (Reset)</button>
+        </div>
+    </div>
+
+    <div id="main-view">
+        <canvas id="simCanvas"></canvas>
+        <div id="statusOverlay">
+            原子潰滅！<br>
+            <span style="font-size: 1.5rem; color: #f8fafc;">Atom Collapsed</span>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('simCanvas');
+        const ctx = canvas.getContext('2d');
+        const container = document.getElementById('main-view');
+        const statusOverlay = document.getElementById('statusOverlay');
+        const playBtn = document.getElementById('playBtn');
+        const radiationSlider = document.getElementById('radiationRate');
+        const radValDisplay = document.getElementById('radVal');
+        const initRadiusSlider = document.getElementById('initRadius');
+        const radRadiusValDisplay = document.getElementById('radRadiusVal');
+
+        let width, height, cx, cy;
+        let isRunning = false;
+        let animationId;
+
+        // Physics Constants
+        const k = 1000000;
+        const nucleusRadius = 15;
+        const electronRadius = 6;
+        const SIM_SPEED = 12.0;
+        const SUB_STEPS = 100;
+        const dt = ((1/60) * SIM_SPEED) / SUB_STEPS;
+
+        let electron = { x: 0, y: 0, vx: 0, vy: 0 };
+        let trajectory = [];
+        let ripples = [];
+        let rippleCounter = 0;
+
+        function resize() {
+            width = container.clientWidth;
+            height = container.clientHeight;
+            canvas.width = width;
+            canvas.height = height;
+            cx = width / 2;
+            cy = height / 2;
+            if (!isRunning) draw();
+        }
+
+        function resetSimulation() {
+            isRunning = false;
+            cancelAnimationFrame(animationId);
+            playBtn.textContent = '開始 (Play)';
+            playBtn.classList.remove('playing');
+            statusOverlay.classList.remove('visible');
+
+            const r0 = parseFloat(initRadiusSlider.value);
+            electron.x = r0; electron.y = 0;
+            const v0 = Math.sqrt(k / r0);
+            electron.vx = 0; electron.vy = v0;
+            
+            trajectory = [];
+            ripples = [];
+            rippleCounter = 0;
+            draw();
+        }
+
+        function physicsStep() {
+            const rSq = electron.x * electron.x + electron.y * electron.y;
+            const r = Math.sqrt(rSq);
+            const speed = Math.hypot(electron.vx, electron.vy);
+
+            // Collapse Condition
+            if (r < nucleusRadius || (speed < 0.1 && r < 150)) {
+                isRunning = false;
+                statusOverlay.classList.add('visible');
+                electron.vx = 0; electron.vy = 0;
+                return;
+            }
+
+            // Central Force (Coulomb)
+            const a_mag = k / rSq;
+            const ax = -a_mag * (electron.x / r);
+            const ay = -a_mag * (electron.y / r);
+            electron.vx += ax * dt;
+            electron.vy += ay * dt;
+
+            // Radiation Loss (Larmor Formula simulation)
+            const radRate = parseFloat(radiationSlider.value);
+            if (radRate > 0) {
+                const alpha = radRate * 0.01;
+                const powerRadiated = alpha * (ax*ax + ay*ay);
+                const currentEnergy = 0.5 * (electron.vx**2 + electron.vy**2);
+                const newEnergy = Math.max(0, currentEnergy - powerRadiated * dt);
+                if (currentEnergy > 0) {
+                    const scale = Math.sqrt(newEnergy / currentEnergy);
+                    electron.vx *= scale; electron.vy *= scale;
+                }
+
+                // Radiation Ripples
+                rippleCounter++;
+                if (rippleCounter % 200 === 0) {
+                    ripples.push({ x: electron.x, y: electron.y, radius: electronRadius, opacity: 0.6 });
+                }
+            }
+
+            electron.x += electron.vx * dt;
+            electron.y += electron.vy * dt;
+
+            // Update Trajectory
+            if (trajectory.length === 0 || Math.hypot(trajectory[trajectory.length-1].x - electron.x, trajectory[trajectory.length-1].y - electron.y) > 2) {
+                trajectory.push({x: electron.x, y: electron.y});
+            }
+        }
+
+        function draw() {
+            ctx.fillStyle = '#0f172a';
+            ctx.fillRect(0, 0, width, height);
+
+            ctx.save();
+            ctx.translate(cx, cy);
+
+            // Trajectory
+            if (trajectory.length > 1) {
+                ctx.beginPath();
+                ctx.moveTo(trajectory[0].x, trajectory[0].y);
+                for(let i=1; i<trajectory.length; i++) ctx.lineTo(trajectory[i].x, trajectory[i].y);
+                ctx.strokeStyle = 'rgba(251, 191, 36, 0.3)';
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+            }
+
+            // Ripples
+            for (let i = ripples.length - 1; i >= 0; i--) {
+                const r = ripples[i];
+                ctx.beginPath();
+                ctx.arc(r.x, r.y, r.radius, 0, Math.PI * 2);
+                ctx.strokeStyle = `rgba(56, 189, 248, ${r.opacity})`;
+                ctx.lineWidth = 1;
+                ctx.stroke();
+                r.radius += 0.8;
+                r.opacity -= 0.01;
+                if (r.opacity <= 0) ripples.splice(i, 1);
+            }
+
+            // Nucleus
+            ctx.beginPath();
+            ctx.arc(0, 0, nucleusRadius, 0, Math.PI * 2);
+            ctx.fillStyle = 'var(--nucleus-color)';
+            ctx.fill();
+            ctx.fillStyle = 'white'; ctx.font = 'bold 16px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.fillText('+', 0, 0);
+
+            // Electron
+            ctx.beginPath();
+            ctx.arc(electron.x, electron.y, electronRadius, 0, Math.PI * 2);
+            ctx.fillStyle = 'var(--electron-color)';
+            ctx.fill();
+            ctx.fillStyle = 'black'; ctx.font = 'bold 14px Arial';
+            ctx.fillText('-', electron.x, electron.y - 1);
+
+            ctx.restore();
+        }
+
+        function animationLoop() {
+            if (!isRunning) return;
+            for(let i=0; i<SUB_STEPS; i++) physicsStep();
+            draw();
+            animationId = requestAnimationFrame(animationLoop);
+        }
+
+        playBtn.onclick = () => {
+            isRunning = !isRunning;
+            playBtn.textContent = isRunning ? '暫停 (Pause)' : '繼續 (Play)';
+            playBtn.classList.toggle('playing', isRunning);
+            if (isRunning) animationLoop();
+        };
+
+        document.getElementById('resetBtn').onclick = resetSimulation;
+        radiationSlider.oninput = (e) => radValDisplay.textContent = e.target.value;
+        initRadiusSlider.oninput = (e) => { radRadiusValDisplay.textContent = e.target.value; resetSimulation(); };
+
+        window.addEventListener('resize', resize);
+        resize();
+        resetSimulation();
+    </script>
+</body>
+</html>

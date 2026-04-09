@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>氫原子全光譜實驗與詳細分析 (Rydberg Detailed Analysis)</title>
+    <style>
+        :root {
+            --bg-color: #020617;
+            --panel-bg: rgba(30, 41, 59, 0.75);
+            --text-color: #f8fafc;
+            --accent-color: #38bdf8;
+            --font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            --lyman-col: #a855f7; --balmer-col: #38bdf8; --paschen-col: #f87171; --brackett-col: #fbbf24;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: var(--bg-color); color: var(--text-color); font-family: var(--font-family); height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+
+        header { padding: 0.8rem 1.5rem; background: rgba(15, 23, 42, 0.95); border-bottom: 1px solid #1e293b; display: flex; justify-content: space-between; align-items: center; z-index: 100; }
+        h1 { font-size: 1.3rem; font-weight: 700; color: var(--accent-color); }
+
+        main { flex: 1; display: grid; grid-template-columns: 1.4fr 2.6fr; gap: 1rem; padding: 1rem; min-height: 0; }
+
+        .panel { background: var(--panel-bg); border-radius: 12px; border: 1px solid #334155; position: relative; overflow: hidden; display: flex; flex-direction: column; }
+
+        /* ── Left: Setup ── */
+        #exp-panel { justify-content: center; align-items: center; }
+        canvas { width: 100%; height: 100%; display: block; }
+        .controls { position: absolute; top: 15px; left: 15px; }
+        button { background: #0ea5e9; color: white; border: none; padding: 6px 14px; border-radius: 6px; font-weight: 600; cursor: pointer; transition: 0.2s; }
+        button:hover { background: #0284c7; }
+        button.off { background: #475569; }
+
+        /* ── Right Analysis Area ── */
+        #analysis-container { display: flex; gap: 12px; height: 100%; }
+
+        /* Narrow Navigator (1/10 of analysis area) */
+        #nav-panel { width: 10%; height: 100%; background: #000; border-radius: 12px; position: relative; border: 1px solid #334155; cursor: crosshair; overflow: hidden; }
+        .series-label { position: absolute; left: 5px; font-size: 20px; font-weight: 700; padding: 4px 8px; border-radius: 4px; background: rgba(0,0,0,0.8); border-left: 3px solid; cursor: pointer; pointer-events: auto; transition: all 0.2s; }
+        .series-label:hover { background: rgba(255,255,255,0.1); transform: scale(1.05); }
+        .active-lbl { background: rgba(255,255,255,0.15) !important; box-shadow: 0 0 8px rgba(255,255,255,0.1); }
+
+        /* Detail Showcase (9/10 of analysis area) */
+        #detail-panel { flex: 1; height: 100%; display: flex; flex-direction: column; padding: 1.5rem; background: var(--panel-bg); border-radius: 12px; border: 1px solid #334155; backdrop-filter: blur(10px); overflow: hidden; }
+        #detail-header { border-bottom: 2px solid var(--accent-color); margin-bottom: 1.5rem; padding-bottom: 0.5rem; text-align: center; }
+        #detail-title { font-size: 2.2rem; color: #fff; letter-spacing: 0.1em; }
+
+        /* ── Detail Body Split ── */
+        #detail-body { flex: 1; display: flex; gap: 20px; min-height: 0; position: relative; }
+
+        /* Left: Magnified Spectrum */
+        #spectrum-magnifier { flex: 0.5; position: relative; background: rgba(0,0,0,0.3); border-radius: 8px; border: 1px solid #1e293b; overflow: hidden; }
+        .magnified-line { 
+            position: absolute; 
+            left: 0; 
+            width: 30%; /* Wider relative to narrow container */
+            height: 3px; 
+            box-shadow: 0 0 12px currentColor; 
+            transition: top 0.4s cubic-bezier(0.4, 0, 0.2, 1); 
+        }
+        .wavelength-label { 
+            position: absolute; 
+            left: 45%; 
+            font-family: 'Consolas', monospace; 
+            font-size: 1.2rem; 
+            font-weight: 700; 
+            transform: translateY(-50%); 
+            transition: top 0.4s cubic-bezier(0.4, 0, 0.2, 1); 
+        }
+
+        /* Right: Formula Column */
+        #formula-column { flex: 2; display: flex; flex-direction: column; justify-content: space-around; gap: 8px; padding-left: 20px; border-left: 1px dashed #334155; }
+        .formula-item { 
+            padding: 12px 20px; 
+            background: rgba(255,255,255,0.05); 
+            border-radius: 8px; 
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-family: 'Cambria Math', 'Times New Roman', serif; 
+            font-size: 1.5rem; 
+            font-style: italic; 
+            color: #cbd5e1; 
+            white-space: nowrap;
+            animation: fadeIn 0.4s ease-out backwards; 
+        }
+        .formula-item > div { overflow: hidden; text-overflow: ellipsis; }
+
+        .frac { display: inline-flex; flex-direction: column; align-items: center; vertical-align: middle; }
+        .frac-num { border-bottom: 1px solid #94a3b8; padding: 0 4px; font-size: 0.9em; }
+        .frac-den { padding: 0 4px; font-size: 0.9em; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        #tooltip { position: absolute; background: rgba(0,0,0,0.9); color: white; padding: 4px 10px; border-radius: 4px; font-size: 0.8rem; pointer-events: none; display: none; border: 1px solid var(--accent-color); z-index: 1000; }
+    </style>
+</head>
+<body>
+
+<header>
+    <div style="display: flex; align-items: center; gap: 15px;">
+        <a href="bohr_derivation.html" style="color: #94a3b8; text-decoration: none; font-weight: bold; font-size: 0.9rem; background: rgba(255,255,255,0.1); padding: 4px 8px; border-radius: 4px;">← 返回波耳模型推導</a>
+        <h1>氫原子全光譜實驗與分析</h1>
+    </div>
+    <div id="status">實驗狀態：<span id="powerStatus" style="color:#ef4444;">關閉</span></div>
+</header>
+
+<main>
+    <!-- Left: Setup -->
+    <div class="panel" id="exp-panel">
+        <canvas id="expCanvas"></canvas>
+        <div class="controls"><button id="toggleBtn">開啟電源</button></div>
+    </div>
+
+    <!-- Right: Analysis Area -->
+    <div id="analysis-container" style="background:none; border:none; overflow:visible;">
+        <!-- Narrow Spectrum Navigator (10% width) -->
+        <div id="nav-panel">
+            <canvas id="specCanvas"></canvas>
+            <div id="labels-container" style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none;"></div>
+        </div>
+
+        <!-- Detail Showcase (90% width) -->
+        <div id="detail-panel">
+            <div id="detail-header"><h2 id="detail-title">選擇系列開始分區分析</h2></div>
+            <div id="detail-body">
+                <!-- Magnified Spectrum with aligned labels -->
+                <div id="spectrum-magnifier"></div>
+                <!-- Independent evenly distributed formulas -->
+                <div id="formula-column"></div>
+            </div>
+            <div style="color:#64748b; font-size:0.8rem; border-top:1px solid #1e293b; padding-top:10px; margin-top:20px;">
+                * 波長 $\lambda$： $1 / [R_H \cdot (1/n_l^2 - 1/n_h^2)]$
+            </div>
+        </div>
+    </div>
+</main>
+
+<div id="tooltip"></div>
+
+<script>
+    const RH = 1.097373e7;
+    const WL_MIN = 80, WL_MAX = 11000, logMin = Math.log(WL_MIN), logMax = Math.log(WL_MAX);
+
+    const SERIES = [
+        { id: 'lyman', name: '萊曼系', n1: 1, color: '#a855f7', range: [91, 122] },
+        { id: 'balmer', name: '巴耳麥系', n1: 2, color: '#38bdf8', range: [364, 656] },
+        { id: 'paschen', name: '帕申系', n1: 3, color: '#f87171', range: [820, 1875] },
+        { id: 'brackett', name: '布拉克系', n1: 4, color: '#fbbf24', range: [1458, 4051] }
+    ];
+
+    const expCanvas = document.getElementById('expCanvas'), expCtx = expCanvas.getContext('2d');
+    const specCanvas = document.getElementById('specCanvas'), specCtx = specCanvas.getContext('2d');
+    const toggleBtn = document.getElementById('toggleBtn'), powerStatus = document.getElementById('powerStatus');
+    const detailTitle = document.getElementById('detail-title');
+    const magnifier = document.getElementById('spectrum-magnifier');
+    const formulaColumn = document.getElementById('formula-column');
+    const labelsContainer = document.getElementById('labels-container'), tooltip = document.getElementById('tooltip');
+
+    let isPowerOn = false, beamProgress = 0, currentSeries = SERIES[1], animationId;
+
+    function resize() {
+        expCanvas.width = expCanvas.parentElement.clientWidth; expCanvas.height = expCanvas.parentElement.clientHeight;
+        specCanvas.width = specCanvas.parentElement.clientWidth; specCanvas.height = specCanvas.parentElement.clientHeight;
+        updateUI();
+        drawExp();
+        drawSpectrum();
+    }
+
+    function wlToY(nm) {
+        if (nm < WL_MIN) return -20; if (nm > WL_MAX) return specCanvas.height + 20;
+        return ((Math.log(nm) - logMin) / (logMax - logMin)) * specCanvas.height;
+    }
+
+    function drawExp() {
+        const w = expCanvas.width, h = expCanvas.height, ctx = expCtx;
+        ctx.clearRect(0, 0, w, h);
+        
+        // Configuration
+        const gratingX = w * 0.4;
+        const gratingY = h / 2;
+        const rotateAngle = -45 * Math.PI / 180; // CCW 45 degrees
+        
+        // Helper for text positions
+        function getRotatedPos(rx, ry) {
+            const x = rx * Math.cos(rotateAngle) - ry * Math.sin(rotateAngle) + gratingX;
+            const y = rx * Math.sin(rotateAngle) + ry * Math.cos(rotateAngle) + gratingY;
+            return { x, y };
+        }
+
+        // --- 1. Draw Rotated Group (Tube + Slit + Grating) ---
+        ctx.save();
+        ctx.translate(gratingX, gratingY);
+        ctx.rotate(rotateAngle);
+
+        const tubeDX = -180, tubeW = 25, tubeH = 120;
+        const slitDX = -80;
+
+        // Discharge Tube
+        if (isPowerOn) {
+            const g = ctx.createRadialGradient(tubeDX + tubeW/2, 0, 0, tubeDX + tubeW/2, 0, 50);
+            g.addColorStop(0, 'rgba(244,114,182,0.5)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+            ctx.fillStyle = g; ctx.fillRect(tubeDX - 20, -tubeH/2 - 20, tubeW + 40, tubeH + 40);
+        }
+        ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 2;
+        ctx.strokeRect(tubeDX, -tubeH/2, tubeW, tubeH);
+        if (isPowerOn) { ctx.fillStyle = '#f472b6'; ctx.fillRect(tubeDX + 4, -tubeH/2 + 8, tubeW - 8, tubeH - 16); }
+
+        // Slit
+        ctx.fillStyle = '#475569';
+        ctx.fillRect(slitDX, -25, 4, 18);
+        ctx.fillRect(slitDX, 7, 4, 18);
+
+        // Grating (at 0,0 relative to translated)
+        ctx.fillStyle = '#cbd5e1';
+        ctx.beginPath();
+        ctx.moveTo(0, -25); ctx.lineTo(12, 0); ctx.lineTo(0, 25); ctx.fill();
+
+        // Beam from tube to grating
+        if (isPowerOn && beamProgress > 0) {
+            ctx.strokeStyle = 'rgba(255,255,255,0.9)'; ctx.lineWidth = 2.5;
+            const tubeEndX = tubeDX + tubeW;
+            const s1 = Math.min(1, beamProgress * 3);
+            ctx.beginPath(); ctx.moveTo(tubeEndX, 0); ctx.lineTo(tubeEndX + (slitDX - tubeEndX) * s1, 0); ctx.stroke();
+            
+            if (beamProgress > 0.33) {
+                const s2 = Math.min(1, (beamProgress - 0.33) * 3);
+                ctx.beginPath(); ctx.moveTo(slitDX + 4, 0); ctx.lineTo(slitDX + 4 + (0 - (slitDX + 4)) * s2, 0); ctx.stroke();
+            }
+        }
+        ctx.restore();
+
+        // --- 2. Device Labels (Non-rotated) ---
+        ctx.fillStyle = '#cbd5e1'; ctx.font = 'bold 24px Arial, sans-serif'; ctx.textAlign = 'center';
+        const tPos = getRotatedPos(tubeDX + 12, -tubeH/2 - 35);
+        ctx.fillText('氫氣放電管', tPos.x, tPos.y);
+        const sPos = getRotatedPos(slitDX + 2, -55);
+        ctx.fillText('狹縫', sPos.x, sPos.y);
+        const gPos = getRotatedPos(15, -55);
+        ctx.fillText('繞射光柵', gPos.x, gPos.y);
+
+        // --- 3. Split Rays (Balmer specific) ---
+        if (isPowerOn && beamProgress > 0.66) {
+            const s3 = Math.min(1, (beamProgress - 0.66) * 3);
+            const balmerLines = [
+                { wl: 656.3, color: '#ff4444', name: '紅光 (n=3→2)' }, 
+                { wl: 486.1, color: '#44ff44', name: '綠光 (n=4→2)' },
+                { wl: 434.1, color: '#4444ff', name: '藍光 (n=5→2)' },
+                { wl: 410.2, color: '#aa44ff', name: '紫光 (n=6→2)' }
+            ];
+
+            balmerLines.forEach(line => {
+                const targetY = wlToY(line.wl);
+                ctx.strokeStyle = line.color; ctx.lineWidth = 3; ctx.globalAlpha = 0.8;
+                ctx.shadowBlur = 10; ctx.shadowColor = line.color;
+                
+                ctx.beginPath();
+                // Origin is now exactly the grating center (gratingX, gratingY)
+                ctx.moveTo(gratingX, gratingY);
+                const endX = w;
+                ctx.lineTo(gratingX + (endX - gratingX) * s3, gratingY + (targetY - gratingY) * s3);
+                ctx.stroke();
+                ctx.shadowBlur = 0;
+            });
+        }
+    }
+
+    function drawSpectrum() {
+        const w = specCanvas.width, h = specCanvas.height, ctx = specCtx;
+        ctx.fillStyle = '#000'; ctx.fillRect(0,0,w,h);
+        if (!isPowerOn || beamProgress < 1) return;
+
+        SERIES.forEach(s => {
+            for (let n = s.n1 + 1; n <= s.n1 + 15; n++) {
+                const wl = (1 / (RH * (1/(s.n1*s.n1) - 1/(n*n)))) / 1e-9;
+                const y = wlToY(wl);
+                ctx.strokeStyle = s.color; ctx.lineWidth = (n === s.n1 + 1) ? 2.5 : 1.5;
+                ctx.globalAlpha = s === currentSeries ? 1 : 0.2;
+                ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+            }
+        });
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = '#1e293b'; ctx.font = '9px Arial'; ctx.textAlign = 'right';
+        [100, 500, 1000, 5000, 10000].forEach(v => { const y = wlToY(v); ctx.fillRect(0, y, w, 1); ctx.fillText(v+'nm', w-5, y-2); });
+    }
+
+    function updateUI() {
+        labelsContainer.innerHTML = '';
+        SERIES.forEach(s => {
+            const div = document.createElement('div');
+            div.className = 'series-label' + (s === currentSeries ? ' active-lbl' : '');
+            div.style.borderColor = s.color; div.style.color = s.color;
+            div.textContent = s.name;
+            const midY = wlToY(Math.sqrt(s.range[0] * s.range[1]));
+            div.style.top = (midY - 10) + 'px';
+            div.onclick = () => { currentSeries = s; showDetail(); drawSpectrum(); updateUI(); };
+            labelsContainer.appendChild(div);
+        });
+        if (isPowerOn) showDetail();
+    }
+
+    function showDetail() {
+        detailTitle.textContent = currentSeries.name;
+        magnifier.innerHTML = '';
+        formulaColumn.innerHTML = '';
+        
+        const n1 = currentSeries.n1;
+        const lineData = [];
+        for (let n = n1 + 1; n <= n1 + 5; n++) {
+            const wl = (1 / (RH * (1/(n1*n1) - 1/(n*n)))) / 1e-9;
+            lineData.push({ n, wl });
+        }
+
+        const wlMin = lineData[lineData.length - 1].wl;
+        const wlMax = lineData[0].wl;
+        const wlRange = wlMax - wlMin;
+
+        // Clone and reverse lineData for formula column to match top-to-bottom visual order
+        // lines: Top (shortest WL, high n) to Bottom (longest WL, low n)
+        const displayLines = [...lineData].reverse(); 
+
+        lineData.forEach((line, idx) => {
+            // Draw Aligned Stripes & Labels (remain same visual logic)
+            const yRatio = (line.wl - wlMin) / wlRange;
+            const yPos = (yRatio * 90 + 5); 
+
+            const stripe = document.createElement('div');
+            stripe.className = 'magnified-line';
+            stripe.style.top = yPos + '%';
+            stripe.style.backgroundColor = currentSeries.color;
+            stripe.style.color = currentSeries.color;
+            magnifier.appendChild(stripe);
+
+            const wlText = document.createElement('div');
+            wlText.className = 'wavelength-label';
+            wlText.style.top = yPos + '%';
+            wlText.style.color = currentSeries.color;
+            wlText.textContent = line.wl.toFixed(1) + ' nm';
+            magnifier.appendChild(wlText);
+        });
+
+        // Now append formulas in the correct visual order (Top to Bottom)
+        const limitWL = (n1 * n1 / RH) / 1e-9;
+
+        displayLines.forEach((line, idx) => {
+            const formulaItem = document.createElement('div');
+            formulaItem.className = 'formula-item';
+            formulaItem.style.animationDelay = `${idx * 0.1}s`;
+            
+            const greek = ['α', 'β', 'γ', 'δ', 'ε'][line.n - n1 - 1] || '';
+            const transLabel = currentSeries.id === 'balmer' ? `H${greek}` : `n=${line.n}&rarr;${n1}`;
+            
+            const n1sqStr = `${n1}<sup>2</sup>`;
+            const nhsqStr = `${line.n}<sup>2</sup>`;
+            
+            const mainFrac = `<span class="frac"><span class="frac-num">${nhsqStr} &sdot; ${n1sqStr}</span><span class="frac-den">${nhsqStr} &minus; ${n1sqStr}</span></span>`;
+            const baseFrac1 = `<span class="frac"><span class="frac-num">1</span><span class="frac-den">${n1sqStr}</span></span>`;
+            const baseFrac2 = `<span class="frac"><span class="frac-num">1</span><span class="frac-den">${nhsqStr}</span></span>`;
+
+            formulaItem.innerHTML = `
+                <div style="text-align: left;">${transLabel}：<span style="color:#fff;">${line.wl.toFixed(1)}nm</span> = ${limitWL.toFixed(1)}nm &sdot; ${mainFrac}</div>
+                <div style="text-align: right; color:var(--accent-color); border-left: 2px solid rgba(255,255,255,0.1); padding-left: 20px; margin-left: 20px;">
+                    &lambda; = [R<sub>H</sub> (${baseFrac1} &minus; ${baseFrac2})]<sup>&minus;1</sup>
+                </div>
+            `;
+            formulaColumn.appendChild(formulaItem);
+        });
+    }
+
+    toggleBtn.addEventListener('click', () => {
+        isPowerOn = !isPowerOn;
+        toggleBtn.textContent = isPowerOn ? '關閉電源' : '開啟電源'; powerStatus.textContent = isPowerOn ? '運作中' : '關閉';
+        powerStatus.style.color = isPowerOn ? '#4ade80' : '#ef4444';
+        if (isPowerOn) { beamProgress = 0; animate(); showDetail(); }
+        else { if (animationId) cancelAnimationFrame(animationId); drawExp(); drawSpectrum(); magnifier.innerHTML = ''; formulaColumn.innerHTML = ''; detailTitle.textContent = '選擇系列開始分析'; }
+    });
+
+    function animate() {
+        if (!isPowerOn) return;
+        beamProgress += 0.01; if (beamProgress > 1) beamProgress = 1;
+        drawExp(); drawSpectrum(); if (beamProgress < 1) animationId = requestAnimationFrame(animate);
+    }
+
+    window.addEventListener('resize', resize);
+    resize();
+</script>
+</body>
+</html>

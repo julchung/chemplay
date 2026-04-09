@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>波耳氫原子模型 — 假設與推導 (Bohr Model Derivation)</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
+        :root {
+            --bg: #020617; --panel: #0f172a; --card: #1e293b;
+            --text: #f8fafc; --muted: #94a3b8; --border: #334155;
+            --accent: #a855f7; --accent2: #38bdf8; --gold: #fbbf24;
+            --red: #f87171; --green: #4ade80;
+        }
+        * { margin:0; padding:0; box-sizing:border-box; }
+        html { scroll-behavior: smooth; }
+        body { background:var(--bg); color:var(--text); font-family:'Noto Sans TC','Segoe UI',sans-serif; overflow-x:hidden; }
+
+        /* ── Hero ── */
+        .hero { position:relative; height:100vh; display:flex; align-items:center; justify-content:center; overflow:hidden; }
+        .hero canvas { position:absolute; inset:0; width:100%; height:100%; }
+        .hero-content { position:relative; z-index:2; text-align:center; }
+        .hero h1 { font-size:3.5rem; font-weight:900; background:linear-gradient(135deg,#a855f7,#38bdf8,#fbbf24); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; margin-bottom:1rem; }
+        .hero p { font-size:1.3rem; color:var(--muted); max-width:600px; margin:0 auto 2rem; line-height:1.8; }
+        .scroll-hint { animation:bounce 2s infinite; color:var(--accent2); font-size:2rem; cursor:pointer; }
+        @keyframes bounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(12px)} }
+
+        /* ── Navigation ── */
+        nav { position:fixed; top:0; left:0; right:0; z-index:100; background:rgba(2,6,23,0.85); backdrop-filter:blur(12px); border-bottom:1px solid var(--border); padding:0 2rem; display:flex; align-items:center; gap:1.5rem; height:56px; transition:transform 0.3s; }
+        nav.hidden { transform:translateY(-100%); }
+        nav .logo { font-weight:900; font-size:1.1rem; color:var(--accent); white-space:nowrap; }
+        nav .nav-links { display:flex; gap:6px; overflow-x:auto; flex:1; }
+        nav .nav-links a { color:var(--muted); text-decoration:none; font-size:0.85rem; font-weight:600; padding:6px 12px; border-radius:6px; white-space:nowrap; transition:all 0.2s; }
+        nav .nav-links a:hover, nav .nav-links a.active { color:#fff; background:rgba(168,85,247,0.2); }
+
+        /* ── Sections ── */
+        section { max-width:1100px; margin:0 auto; padding:60px 2rem; height:100vh; display:flex; flex-direction:column; justify-content:center; }
+        section h2 { font-size:1.8rem; font-weight:900; margin-bottom:1rem; display:flex; align-items:center; gap:12px; flex-shrink:0; }
+        section h2 .num { display:inline-flex; align-items:center; justify-content:center; width:36px; height:36px; border-radius:50%; background:linear-gradient(135deg,var(--accent),var(--accent2)); font-size:1.1rem; color:#fff; flex-shrink:0; }
+
+        /* ── Grids ── */
+        .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+        .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; align-items: start; }
+        .step-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+
+        /* ── Cards ── */
+        .postulate-card { background:var(--card); border-radius:16px; padding:20px 24px; border-left:4px solid var(--accent); position:relative; overflow:hidden; transition:transform 0.3s,box-shadow 0.3s; display:flex; flex-direction:column; justify-content:center; }
+        .postulate-card:hover { transform:translateY(-3px); box-shadow:0 12px 40px rgba(168,85,247,0.15); }
+        .postulate-card h3 { font-size:1.15rem; color:var(--accent); margin-bottom:10px; }
+        .postulate-card p { color:#cbd5e1; line-height:1.6; font-size:0.95rem; }
+
+        /* ── Derivation Steps ── */
+        .derive-step { background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:20px; position:relative; display:flex; flex-direction:column; justify-content:center; }
+        .derive-step::before { content:''; position:absolute; left:0; top:0; bottom:0; width:4px; border-radius:4px 0 0 4px; background:linear-gradient(to bottom,var(--accent),var(--accent2)); }
+        .derive-step .step-title { font-size:1.05rem; font-weight:700; color:var(--accent2); margin-bottom:10px; display:flex; align-items:center; gap:6px; }
+        .derive-step .step-title .icon { font-size:1.2rem; }
+        .step-desc { color:#cbd5e1; line-height:1.6; margin-bottom:8px; font-size:0.95rem; }
+
+        /* ── Math Display ── */
+        .math-box { background:#000; border:1px solid var(--border); border-radius:12px; padding:12px; margin:8px 0; text-align:center; font-family:'Cambria Math','Times New Roman',serif; font-style:italic; font-size:1.3rem; color:#fff; line-height:1.8; overflow-x:auto; }
+        .math-box.highlight { border-color:var(--gold); box-shadow:0 0 20px rgba(251,191,36,0.12); }
+        .math-box.result { border-color:var(--green); background:rgba(74,222,128,0.05); }
+        .math-inline { font-family:'Cambria Math','Times New Roman',serif; font-style:italic; color:var(--gold); }
+
+        .frac { display:inline-flex; flex-direction:column; align-items:center; vertical-align:middle; margin:0 3px; }
+        .frac-num { border-bottom:1.5px solid var(--muted); padding:0 6px 3px; }
+        .frac-den { padding:3px 6px 0; }
+        sub, sup { font-size:0.72em; }
+
+        /* ── Annotation ── */
+        .anno { font-size:0.9rem; color:var(--muted); font-style:normal; font-family:'Noto Sans TC',sans-serif; margin-top:8px; }
+        .anno span { color:var(--gold); font-weight:600; }
+
+        /* ── Diagram Row ── */
+        .diagram-row { display:flex; gap:20px; margin:24px 0; flex-wrap:wrap; }
+        .diagram-card { flex:1; min-width:280px; background:var(--card); border-radius:14px; padding:24px; border:1px solid var(--border); }
+        .diagram-card h4 { color:var(--accent2); margin-bottom:10px; font-size:1rem; }
+        .diagram-card canvas { width:100%; height:220px; display:block; border-radius:8px; }
+
+        /* ── Timeline connector ── */
+        .timeline { position:relative; padding-left:0; }
+        .timeline .derive-step { margin-left:0; }
+
+        /* ── Summary Table ── */
+        .summary-table { width:100%; border-collapse:separate; border-spacing:0; margin:24px 0; border-radius:12px; overflow:hidden; }
+        .summary-table th { background:linear-gradient(135deg,rgba(168,85,247,0.3),rgba(56,189,248,0.2)); padding:14px 18px; text-align:left; font-weight:700; font-size:0.95rem; }
+        .summary-table td { background:var(--card); padding:14px 18px; border-bottom:1px solid var(--border); font-size:0.95rem; color:#cbd5e1; }
+        .summary-table tr:last-child td { border-bottom:none; }
+
+        /* ── Footer ── */
+        footer { text-align:center; padding:40px; color:var(--muted); font-size:0.85rem; border-top:1px solid var(--border); margin-top:40px; }
+        footer a { color:var(--accent2); text-decoration:none; }
+
+        /* ── Scroll Animations ── */
+        .fade-in { opacity:0; transform:translateY(30px); transition:opacity 0.7s ease,transform 0.7s ease; }
+        .fade-in.visible { opacity:1; transform:translateY(0); }
+
+        /* ── Responsive ── */
+        @media(max-width:768px) {
+            .hero h1 { font-size:2.2rem; }
+            section { padding:80px 1rem 40px; }
+            .math-box { font-size:1.2rem; padding:14px; }
+            .diagram-row { flex-direction:column; }
+            nav .nav-links a { font-size:0.75rem; padding:4px 8px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav id="mainNav">
+    <div class="logo">⚛ 波耳模型推導</div>
+    <div class="nav-links">
+        <a href="#postulates">三大假設</a>
+        <a href="#radius">軌道半徑</a>
+        <a href="#energy">能階推導</a>
+        <a href="#spectrum">光譜驗証</a>
+        <a href="#applications">應用與限制</a>
+        <a href="#summary">結論</a>
+    </div>
+</nav>
+
+<!-- ═══════ HERO ═══════ -->
+<div class="hero">
+    <canvas id="heroCanvas"></canvas>
+    <div class="hero-content">
+        <h1>波耳氫原子模型</h1>
+        <p>從古典物理的困境到量子化假設的突破<br>完整推導軌道角動量量子化與能階公式</p>
+        <div class="scroll-hint" onclick="document.getElementById('context').scrollIntoView()">▼</div>
+    </div>
+</div>
+
+<!-- ═══════ CONTEXT ═══════ -->
+<section id="context">
+    <h2 class="fade-in"><span class="num">0</span> 問題背景</h2>
+    <div class="diagram-row fade-in">
+        <div class="diagram-card" style="border-left:4px solid var(--red);">
+            <h4>🔴 困境一：<a href="classical_atom_model.html" style="color: var(--red); text-decoration: underline;">古典原子的崩潰</a></h4>
+            <p style="color:#cbd5e1; line-height:1.8;">拉乩福模型中，電子做圓周運動具有向心加速度，根據馬克士威電磁理論，加速電荷會輻射電磁波而損失能量，導致電子螺旋墜入原子核。古典物理預測原子會在 10<sup>−11</sup> 秒內崩潰。</p>
+        </div>
+        <div class="diagram-card" style="border-left:4px solid var(--accent2);">
+            <h4>🔵 困境二：連續光譜 vs 離散光譜</h4>
+            <p style="color:#cbd5e1; line-height:1.8;">實驗觀測到氫原子發出的是離散的線光譜（芮得柏公式），而古典理論預測螺旋墜落的電子應發出連續頻譜。芮得柏公式能精確預測譜線，但缺乏理論解釋。</p>
+        </div>
+    </div>
+    <div class="math-box fade-in">
+        <div style="margin-bottom:6px; font-size:1rem; color:var(--muted); font-style:normal;"><a href="rydberg_experiment.html" style="color:var(--muted); text-decoration:underline;">芮得柏公式（實驗結果）</a></div>
+        <span class="frac"><span class="frac-num">1</span><span class="frac-den">λ</span></span>
+        = R<sub>H</sub> ·
+        <span style="font-size:1.8rem;">(</span>
+        <span class="frac"><span class="frac-num">1</span><span class="frac-den">n<sub>l</sub><sup>2</sup></span></span>
+        −
+        <span class="frac"><span class="frac-num">1</span><span class="frac-den">n<sub>h</sub><sup>2</sup></span></span>
+        <span style="font-size:1.8rem;">)</span>
+        <div class="anno">其中 <span>R<sub>H</sub> = 1.097 × 10<sup>7</sup> m<sup>−1</sup></span>（芮得柏常數）</div>
+    </div>
+</section>
+
+<!-- ═══════ POSTULATES ═══════ -->
+<section id="postulates">
+    <h2 class="fade-in"><span class="num">1</span> 波耳三大假設（1913）</h2>
+
+    <div class="grid-3">
+        <div class="postulate-card fade-in">
+            <h3>假設一：定態軌道（Stationary States）</h3>
+            <p>電子在特定的圓形軌道上繞原子核運動時，<b style="color:#fff;">不會輻射電磁波</b>。這些特定軌道稱為「定態」或「允許軌道」，電子在定態上運行時能量保持恆定。</p>
+        </div>
+
+        <div class="postulate-card fade-in" style="border-left-color:var(--accent2);">
+            <h3>假設二：角動量量子化條件</h3>
+            <p>電子的軌道角動量只能是 <span class="math-inline">ℏ = h/2π</span> 的整數倍：</p>
+            <div class="math-box highlight" style="margin-top:12px;">
+                L = mvr = n · <span class="frac"><span class="frac-num">h</span><span class="frac-den">2π</span></span>
+                &nbsp;&nbsp; (n=1,2,3…)
+                <div class="anno" style="font-size:0.8rem;"><span>h</span> = 普朗克常數，<span>n</span> = 主量子數</div>
+            </div>
+        </div>
+
+        <div class="postulate-card fade-in" style="border-left-color:var(--gold);">
+            <h3>假設三：頻率條件（Frequency）</h3>
+            <p>電子在兩個定態之間躍遷時，會吸收或放出一個光子，其頻率 ν 滿足：</p>
+            <div class="math-box" style="margin-top:12px; border-color:var(--gold);">
+                ΔE = E<sub>高</sub> − E<sub>低</sub> = hν =
+                <span class="frac"><span class="frac-num">hc</span><span class="frac-den">λ</span></span>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ═══════ RADIUS DERIVATION ═══════ -->
+<section id="radius">
+    <h2 class="fade-in"><span class="num">2</span> 軌道半徑推導</h2>
+
+    <div class="grid-2">
+        <div class="derive-step fade-in">
+            <div class="step-title"><span class="icon">⚡</span> Step 1：庫倫力 = 向心力</div>
+            <div class="step-desc">電子繞原子核做圓周運動，庫倫力提供向心力：</div>
+            <div class="math-box">
+                <span class="frac"><span class="frac-num">ke<sup>2</sup></span><span class="frac-den">r<sup>2</sup></span></span> = <span class="frac"><span class="frac-num">mv<sup>2</sup></span><span class="frac-den">r</span></span> &nbsp;&nbsp; → &nbsp;&nbsp; ke<sup>2</sup> = mv<sup>2</sup>r <span style="font-size:0.8em">⋯①</span>
+            </div>
+        </div>
+
+        <div class="derive-step fade-in">
+            <div class="step-title"><span class="icon">🔄</span> Step 2：代入角動量量子化</div>
+            <div class="step-desc">mvr = nℏ，解出速度 v：</div>
+            <div class="math-box">
+                v = <span class="frac"><span class="frac-num">nℏ</span><span class="frac-den">mr</span></span> = <span class="frac"><span class="frac-num">nh</span><span class="frac-den">2πmr</span></span> <span style="font-size:0.8em">⋯②</span>
+            </div>
+        </div>
+
+        <div class="derive-step fade-in">
+            <div class="step-title"><span class="icon">🧮</span> Step 3：將 ② 代入 ①</div>
+            <div class="step-desc">將速度的表達式代回庫倫力方程式：</div>
+            <div class="math-box">
+                ke<sup>2</sup> = m · <span class="frac"><span class="frac-num">n<sup>2</sup>h<sup>2</sup></span><span class="frac-den">4π<sup>2</sup>m<sup>2</sup>r<sup>2</sup></span></span> · r = <span class="frac"><span class="frac-num">n<sup>2</sup>h<sup>2</sup></span><span class="frac-den">4π<sup>2</sup>mr</span></span>
+            </div>
+        </div>
+
+        <div class="derive-step fade-in">
+            <div class="step-title"><span class="icon">✅</span> Step 4：解出軌道半徑 r<sub>n</sub></div>
+            <div class="step-desc">整理可得第 n 軌道的半徑（波耳半徑）：</div>
+            <div class="math-box result" style="font-size:1.4rem;">
+                r<sub>n</sub> = <span class="frac"><span class="frac-num">n<sup>2</sup>h<sup>2</sup></span><span class="frac-den">4π<sup>2</sup>mke<sup>2</sup></span></span> = n<sup>2</sup> · r<sub>1</sub>
+            </div>
+            <div class="anno" style="text-align:center;">
+                r₁ = 0.529 Å，半徑正比於 n²！
+            </div>
+        </div>
+    </div>
+
+
+</section>
+
+<!-- ═══════ ENERGY DERIVATION ═══════ -->
+<section id="energy">
+    <h2 class="fade-in"><span class="num">3</span> 能階能量推導</h2>
+
+    <div class="step-grid">
+        <div class="derive-step fade-in">
+            <div class="step-title"><span class="icon">⚡</span> Step 1：動能 K</div>
+            <div class="step-desc">由 ① 式 ke² = mv²r ，可得電子動能：</div>
+            <div class="math-box">
+                K = <span class="frac"><span class="frac-num">1</span><span class="frac-den">2</span></span>mv<sup>2</sup> = <span class="frac"><span class="frac-num">ke<sup>2</sup></span><span class="frac-den">2r</span></span>
+            </div>
+        </div>
+
+        <div class="derive-step fade-in">
+            <div class="step-title"><span class="icon">🔋</span> Step 2：位能 U</div>
+            <div class="step-desc">庫倫場電位能（無窮遠為零位能）：</div>
+            <div class="math-box">
+                U = − <span class="frac"><span class="frac-num">ke<sup>2</sup></span><span class="frac-den">r</span></span>
+            </div>
+        </div>
+
+        <div class="derive-step fade-in">
+            <div class="step-title"><span class="icon">📊</span> Step 3：總能量 E</div>
+            <div class="step-desc">E = K + U，總能量為負值表示束縛態：</div>
+            <div class="math-box">
+                E = − <span class="frac"><span class="frac-num">ke<sup>2</sup></span><span class="frac-den">2r</span></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="grid-2" style="margin-top:16px; align-items:stretch;">
+        <div class="derive-step fade-in">
+            <div class="step-title"><span class="icon">🎯</span> Step 4：代入 r<sub>n</sub> = n²r₁</div>
+            <div class="step-desc">將量子化軌道半徑代入總能：</div>
+            <div class="math-box">
+                E<sub>n</sub> = − <span class="frac"><span class="frac-num">2π<sup>2</sup>mk<sup>2</sup>e<sup>4</sup></span><span class="frac-den">n<sup>2</sup>h<sup>2</sup></span></span>
+            </div>
+        </div>
+
+        <div class="derive-step fade-in">
+            <div class="step-title"><span class="icon">🏆</span> Step 5：最終結果</div>
+            <div class="step-desc">代入常數化簡可得能階公式：</div>
+            <div class="math-box result" style="font-size:1.6rem;">
+                E<sub>n</sub> = − <span class="frac"><span class="frac-num">13.6</span><span class="frac-den">n<sup>2</sup></span></span> eV
+                <div class="anno" style="font-size:0.9rem;">
+                    E₁=−13.6eV ｜ E₂=−3.4eV ｜ E₃=−1.51eV
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+</section>
+
+<!-- ═══════ SPECTRUM VERIFICATION ═══════ -->
+<section id="spectrum">
+    <h2 class="fade-in"><span class="num">4</span> 驗証：推導出芮得柏公式</h2>
+
+    <div class="grid-2">
+        <div class="derive-step fade-in">
+            <div class="step-title"><span class="icon">💡</span> 由頻率條件出發</div>
+            <div class="step-desc">電子從 n<sub>h</sub> 躍遷至 n<sub>l</sub> 放出光子，光子能量等於兩態能階差：</div>
+            <div class="math-box">
+                hν = <span class="frac"><span class="frac-num">hc</span><span class="frac-den">λ</span></span> = E<sub>n<sub>h</sub></sub> − E<sub>n<sub>l</sub></sub>
+            </div>
+            <div class="math-box">
+                <span class="frac"><span class="frac-num">hc</span><span class="frac-den">λ</span></span> = <span class="frac"><span class="frac-num">13.6</span><span class="frac-den">n<sub>l</sub><sup>2</sup></span></span> − <span class="frac"><span class="frac-num">13.6</span><span class="frac-den">n<sub>h</sub><sup>2</sup></span></span>
+            </div>
+        </div>
+
+        <div class="derive-step fade-in">
+            <div class="step-title"><span class="icon">✨</span> 整理得到公式</div>
+            <div class="math-box result highlight" style="font-size:1.5rem;">
+                <span class="frac"><span class="frac-num">1</span><span class="frac-den">λ</span></span> = R<sub>H</sub> · 
+                <span style="font-size:1.4em;">(</span>
+                <span class="frac"><span class="frac-num">1</span><span class="frac-den">n<sub>l</sub><sup>2</sup></span></span> − <span class="frac"><span class="frac-num">1</span><span class="frac-den">n<sub>h</sub><sup>2</sup></span></span>
+                <span style="font-size:1.4em;">)</span>
+                <div class="anno" style="font-size:0.9rem;">
+                    已知 <span>R<sub>H</sub></span> = <span class="frac"><span class="frac-num">2π²mk²e⁴</span><span class="frac-den">h³c</span></span>
+                    = <span>1.097 × 10<sup>7</sup> m<sup>−1</sup></span> (與實驗值完全吻合)
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="postulate-card fade-in" style="border-left-color:var(--green); background:rgba(74,222,128,0.05);">
+        <h3 style="color:var(--green);">🎉 驗証成功</h3>
+        <p>波耳模型從三個簡單的假設出發，不僅推導出了氫原子能階公式 E<sub>n</sub> = −13.6/n² eV，更成功地從第一原理推導出芮得柏常數的理論值，與實驗觀測完全一致。這是量子理論的偉大勝利！</p>
+    </div>
+</section>
+
+<!-- ═══════ APPLICATIONS & LIMITATIONS ═══════ -->
+<section id="applications">
+    <h2 class="fade-in"><span class="num">5</span> 應用與限制</h2>
+
+    <div class="grid-2" style="align-items: stretch;">
+        <div class="derive-step fade-in" style="border-left-color: var(--green);">
+            <div class="step-title" style="color: var(--green);"><span class="icon">🌟</span> 模型的成功應用</div>
+            <ul style="color: #cbd5e1; line-height: 1.8; margin-left: 20px; font-size: 1.15rem;">
+                <li style="margin-bottom: 12px;"><b>解釋氫原子光譜：</b>成功從理論推導出與實驗完全吻合的芮得柏公式。</li>
+                <li style="margin-bottom: 12px;"><b>類氫離子系統：</b>適用於其他只含有一個電子的離子系統（如 He⁺、Li²⁺)，只需將核電荷由 e 改為 Z·e 即可準確預測光譜。</li>
+                <li style="margin-bottom: 12px;"><b>引入量子化概念：</b>首次將「軌道角動量量子化」及「能階躍遷」的概念引入原子物理，為後續量子力學的發展奠定了不可或缺的基石。</li>
+            </ul>
+        </div>
+
+        <div class="derive-step fade-in" style="border-left-color: var(--red);">
+            <div class="step-title" style="color: var(--red);"><span class="icon">⚠️</span> 模型的侷限性</div>
+            <ul style="color: #cbd5e1; line-height: 1.8; margin-left: 20px; font-size: 1.15rem;">
+                <li style="margin-bottom: 12px;"><b>多電子原子失效：</b>模型僅適用於單電子系統。當系統中有多個電子時（即使是只要兩個電子的中性氦原子），模型便無法準確計算與解釋其能階與光譜。</li>
+                <li style="margin-bottom: 12px;"><b>無法解釋精細結構與外場效應：</b>能預測譜線位置，但無法解釋為何有些譜線較粗較寬（譜線強度），也無法完美解釋在外加磁場（薩曼效應）或電場（史塔克效應）下的譜線分裂現象。</li>
+                <li style="margin-bottom: 12px;"><b>違反測不準原理：</b>波耳假設電子具有確定的「軌道半徑」和「速度」，這與後來海森堡提出的測不準原理相衝突。現代量子力學已屏棄了「確定軌道」的概念，改以「電子雲」和「力學軌域 (Orbital)」分佈來描述電子。</li>
+            </ul>
+        </div>
+    </div>
+</section>
+
+<!-- ═══════ SUMMARY ═══════ -->
+<section id="summary">
+    <h2 class="fade-in"><span class="num">6</span> 推導結果總整理</h2>
+
+    <table class="summary-table fade-in">
+        <tr><th>物理量</th><th>公式</th><th>n=1 數值</th></tr>
+        <tr><td>軌道半徑</td><td style="font-family:'Cambria Math',serif; font-style:italic;">r<sub>n</sub> = n² · h²/(4π²mke²)</td><td>0.529 Å（波耳半徑）</td></tr>
+        <tr><td>電子速度</td><td style="font-family:'Cambria Math',serif; font-style:italic;">v<sub>n</sub> = ke²/(nℏ)</td><td>2.19 × 10⁶ m/s</td></tr>
+        <tr><td>軌道角動量</td><td style="font-family:'Cambria Math',serif; font-style:italic;">L<sub>n</sub> = nℏ = nh/2π</td><td>1.055 × 10⁻³⁴ J·s</td></tr>
+        <tr><td>能階能量</td><td style="font-family:'Cambria Math',serif; font-style:italic;">E<sub>n</sub> = −13.6/n² eV</td><td>−13.6 eV（基態）</td></tr>
+        <tr><td>芮得柏常數</td><td style="font-family:'Cambria Math',serif; font-style:italic;">R<sub>H</sub> = 2π²mk²e⁴/(h³c)</td><td>1.097 × 10⁷ m⁻¹</td></tr>
+    </table>
+</section>
+
+<footer>
+    <p>波耳氫原子模型推導 · 2026 ·
+        <a href="classical_atom_model.html">← 古典原子潰滅</a>  |
+        <a href="bohr_atom_model.html">波耳模型互動模擬 →</a>  |
+        <a href="rydberg_experiment.html">芮得柏實驗 →</a>
+    </p>
+</footer>
+
+<script>
+// ═══════ Hero Canvas Animation ═══════
+const heroC = document.getElementById('heroCanvas');
+const heroCtx = heroC.getContext('2d');
+function resizeHero() { heroC.width = heroC.parentElement.clientWidth; heroC.height = heroC.parentElement.clientHeight; }
+resizeHero(); window.addEventListener('resize', resizeHero);
+
+let t = 0;
+function drawHero() {
+    const w = heroC.width, h = heroC.height, cx = w/2, cy = h/2;
+    heroCtx.fillStyle = 'rgba(2,6,23,0.15)';
+    heroCtx.fillRect(0,0,w,h);
+    t += 0.02;
+
+    // Orbits
+    for (let n = 1; n <= 5; n++) {
+        const r = 40 + n * 42;
+        heroCtx.beginPath();
+        heroCtx.arc(cx, cy, r, 0, Math.PI*2);
+        heroCtx.strokeStyle = `rgba(168,85,247,${0.08 + 0.04*Math.sin(t+n)})`;
+        heroCtx.lineWidth = 1.5;
+        heroCtx.stroke();
+
+        // Electron
+        const a = t * (1.5/n) + n * 1.2;
+        const ex = cx + r * Math.cos(a), ey = cy + r * Math.sin(a);
+        heroCtx.beginPath();
+        heroCtx.arc(ex, ey, 4, 0, Math.PI*2);
+        heroCtx.fillStyle = `rgba(251,191,36,${0.6+0.4*Math.sin(t*3+n)})`;
+        heroCtx.shadowBlur = 12; heroCtx.shadowColor = '#fbbf24';
+        heroCtx.fill();
+        heroCtx.shadowBlur = 0;
+    }
+
+    // Nucleus
+    heroCtx.beginPath();
+    heroCtx.arc(cx, cy, 10, 0, Math.PI*2);
+    heroCtx.fillStyle = '#ef4444';
+    heroCtx.shadowBlur = 20; heroCtx.shadowColor = '#ef4444';
+    heroCtx.fill();
+    heroCtx.shadowBlur = 0;
+
+    requestAnimationFrame(drawHero);
+}
+drawHero();
+
+
+
+
+
+// ═══════ Scroll Animations ═══════
+const observer = new IntersectionObserver((entries) => {
+    entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+}, { threshold: 0.15 });
+document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
+
+// ═══════ Nav active link ═══════
+const sections = document.querySelectorAll('section');
+const navLinks = document.querySelectorAll('nav .nav-links a');
+window.addEventListener('scroll', () => {
+    let current = '';
+    sections.forEach(s => { if (window.scrollY >= s.offsetTop - 200) current = s.id; });
+    navLinks.forEach(a => a.classList.toggle('active', a.getAttribute('href') === '#' + current));
+    // Show/hide nav
+    document.getElementById('mainNav').classList.toggle('hidden', window.scrollY < 300);
+});
+</script>
+</body>
+</html>
