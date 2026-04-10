@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>氫原子全光譜實驗與詳細分析 (Rydberg Detailed Analysis)</title>
     <style>
         :root {
@@ -15,14 +15,42 @@
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { background: var(--bg-color); color: var(--text-color); font-family: var(--font-family); height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+        body { 
+            background: var(--bg-color); 
+            color: var(--text-color); 
+            font-family: var(--font-family); 
+            height: 100vh; 
+            width: 100vw;
+            display: flex; 
+            flex-direction: column; 
+            overflow: hidden; 
+            touch-action: none;
+            user-select: none;
+        }
 
-        header { padding: 0.8rem 1.5rem; background: rgba(15, 23, 42, 0.95); border-bottom: 1px solid #1e293b; display: flex; justify-content: space-between; align-items: center; z-index: 100; }
-        h1 { font-size: 1.3rem; font-weight: 700; color: var(--accent-color); }
+        header { 
+            padding: 1.5vmin 2.5vmin; 
+            background: rgba(15, 23, 42, 0.95); 
+            border-bottom: 1px solid #1e293b; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            z-index: 100; 
+            height: 8vh;
+        }
+        h1 { font-size: 2.8vmin; font-weight: 700; color: var(--accent-color); }
 
-        main { flex: 1; display: grid; grid-template-columns: 1.4fr 2.6fr; gap: 1rem; padding: 1rem; min-height: 0; }
+        main { 
+            flex: 1; 
+            display: grid; 
+            grid-template-columns: 1.4fr 2.6fr; 
+            gap: 1.5vmin; 
+            padding: 1.5vmin; 
+            min-height: 0; 
+            height: 92vh;
+        }
 
-        .panel { background: var(--panel-bg); border-radius: 12px; border: 1px solid #334155; position: relative; overflow: hidden; display: flex; flex-direction: column; }
+        .panel { background: var(--panel-bg); border-radius: 1vmin; border: 1px solid #334155; position: relative; overflow: hidden; display: flex; flex-direction: column; }
 
         /* ── Left: Setup ── */
         #exp-panel { justify-content: center; align-items: center; }
@@ -33,53 +61,53 @@
         button.off { background: #475569; }
 
         /* ── Right Analysis Area ── */
-        #analysis-container { display: flex; gap: 12px; height: 100%; }
+        #analysis-container { display: flex; gap: 1.5vmin; height: 100%; min-height: 0; }
 
         /* Narrow Navigator (1/10 of analysis area) */
-        #nav-panel { width: 10%; height: 100%; background: #000; border-radius: 12px; position: relative; border: 1px solid #334155; cursor: crosshair; overflow: hidden; }
-        .series-label { position: absolute; left: 5px; font-size: 20px; font-weight: 700; padding: 4px 8px; border-radius: 4px; background: rgba(0,0,0,0.8); border-left: 3px solid; cursor: pointer; pointer-events: auto; transition: all 0.2s; }
+        #nav-panel { width: 10%; height: 100%; background: #000; border-radius: 1vmin; position: relative; border: 1px solid #334155; cursor: crosshair; overflow: hidden; }
+        .series-label { position: absolute; left: 0.5vmin; font-size: 2vmin; font-weight: 700; padding: 0.4vmin 0.8vmin; border-radius: 0.5vmin; background: rgba(0,0,0,0.8); border-left: 3px solid; cursor: pointer; pointer-events: auto; transition: all 0.2s; white-space: nowrap; }
         .series-label:hover { background: rgba(255,255,255,0.1); transform: scale(1.05); }
         .active-lbl { background: rgba(255,255,255,0.15) !important; box-shadow: 0 0 8px rgba(255,255,255,0.1); }
 
         /* Detail Showcase (9/10 of analysis area) */
-        #detail-panel { flex: 1; height: 100%; display: flex; flex-direction: column; padding: 1.5rem; background: var(--panel-bg); border-radius: 12px; border: 1px solid #334155; backdrop-filter: blur(10px); overflow: hidden; }
-        #detail-header { border-bottom: 2px solid var(--accent-color); margin-bottom: 1.5rem; padding-bottom: 0.5rem; text-align: center; }
-        #detail-title { font-size: 2.2rem; color: #fff; letter-spacing: 0.1em; }
+        #detail-panel { flex: 1; height: 100%; display: flex; flex-direction: column; padding: 2vmin; background: var(--panel-bg); border-radius: 1vmin; border: 1px solid #334155; backdrop-filter: blur(10px); overflow: hidden; }
+        #detail-header { border-bottom: 2px solid var(--accent-color); margin-bottom: 2vmin; padding-bottom: 1vmin; text-align: center; }
+        #detail-title { font-size: 4vmin; color: #fff; letter-spacing: 0.1em; }
 
         /* ── Detail Body Split ── */
         #detail-body { flex: 1; display: flex; gap: 20px; min-height: 0; position: relative; }
 
         /* Left: Magnified Spectrum */
-        #spectrum-magnifier { flex: 0.5; position: relative; background: rgba(0,0,0,0.3); border-radius: 8px; border: 1px solid #1e293b; overflow: hidden; }
+        #spectrum-magnifier { flex: 0.5; position: relative; background: rgba(0,0,0,0.3); border-radius: 1vmin; border: 1px solid #1e293b; overflow: hidden; }
         .magnified-line { 
             position: absolute; 
             left: 0; 
             width: 30%; /* Wider relative to narrow container */
-            height: 3px; 
-            box-shadow: 0 0 12px currentColor; 
+            height: 0.4vmin; 
+            box-shadow: 0 0 1.2vmin currentColor; 
             transition: top 0.4s cubic-bezier(0.4, 0, 0.2, 1); 
         }
         .wavelength-label { 
             position: absolute; 
             left: 45%; 
             font-family: 'Consolas', monospace; 
-            font-size: 1.2rem; 
+            font-size: 2vmin; 
             font-weight: 700; 
             transform: translateY(-50%); 
             transition: top 0.4s cubic-bezier(0.4, 0, 0.2, 1); 
         }
 
         /* Right: Formula Column */
-        #formula-column { flex: 2; display: flex; flex-direction: column; justify-content: space-around; gap: 8px; padding-left: 20px; border-left: 1px dashed #334155; }
+        #formula-column { flex: 2; display: flex; flex-direction: column; justify-content: space-around; gap: 1vmin; padding-left: 2vmin; border-left: 1px dashed #334155; overflow: hidden; }
         .formula-item { 
-            padding: 12px 20px; 
+            padding: 1vmin 2vmin; 
             background: rgba(255,255,255,0.05); 
-            border-radius: 8px; 
+            border-radius: 1vmin; 
             display: flex;
             justify-content: space-between;
             align-items: center;
             font-family: 'Cambria Math', 'Times New Roman', serif; 
-            font-size: 1.5rem; 
+            font-size: 2.2vmin; 
             font-style: italic; 
             color: #cbd5e1; 
             white-space: nowrap;
@@ -98,11 +126,11 @@
 <body>
 
 <header>
-    <div style="display: flex; align-items: center; gap: 15px;">
-        <a href="https://julchung.blogspot.com/2026/04/blog-post.html" style="color: #94a3b8; text-decoration: none; font-weight: bold; font-size: 0.9rem; background: rgba(255,255,255,0.1); padding: 4px 8px; border-radius: 4px;">← 返回波耳模型推導</a>
+    <div style="display: flex; align-items: center; gap: 1.5vmin;">
+        <a href="bohr_derivation.html" style="color: #94a3b8; text-decoration: none; font-weight: bold; font-size: 1.8vmin; background: rgba(255,255,255,0.1); padding: 0.6vmin 1.2vmin; border-radius: 0.5vmin;">← 返回波耳模型推導</a>
         <h1>氫原子全光譜實驗與分析</h1>
     </div>
-    <div id="status">實驗狀態：<span id="powerStatus" style="color:#ef4444;">關閉</span></div>
+    <div id="status" style="font-size: 2vmin;">實驗狀態：<span id="powerStatus" style="color:#ef4444;">關閉</span></div>
 </header>
 
 <main>
@@ -129,7 +157,7 @@
                 <!-- Independent evenly distributed formulas -->
                 <div id="formula-column"></div>
             </div>
-            <div style="color:#64748b; font-size:0.8rem; border-top:1px solid #1e293b; padding-top:10px; margin-top:20px;">
+            <div style="color:#64748b; font-size:1.6vmin; border-top:1px solid #1e293b; padding-top:1vmin; margin-top:2vmin;">
                 * 波長 $\lambda$： $1 / [R_H \cdot (1/n_l^2 - 1/n_h^2)]$
             </div>
         </div>
