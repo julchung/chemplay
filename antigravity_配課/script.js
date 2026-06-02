@@ -45,10 +45,11 @@ document.addEventListener('DOMContentLoaded', () => {
         courseTypes[2].tags.push({ id: `type3_${num}`, name: `高三${num}`, hours: 4 });
     }
 
-    // Type 4: 高一17資 (2), 高二17資 (6), 高三17資 (4)
+    // Type 4: 高一17資 (2), 高二17資 (3), 高三17資 (4), 專題 (2)
     courseTypes[3].tags.push({ id: `type4_1`, name: `高一17資`, hours: 2 });
-    courseTypes[3].tags.push({ id: `type4_2`, name: `高二17資`, hours: 6 });
+    courseTypes[3].tags.push({ id: `type4_2`, name: `高二17資`, hours: 3 });
     courseTypes[3].tags.push({ id: `type4_3`, name: `高三17資`, hours: 4 });
+    courseTypes[3].tags.push({ id: `type4_4`, name: `專題`, hours: 2 });
 
     // Type 5: 探究a ~ 探究m (13 tags), 2 hours
     const type5Letters = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm'];
@@ -60,10 +61,10 @@ document.addEventListener('DOMContentLoaded', () => {
     courseTypes[5].tags.push({ id: `type6_a`, name: `多元選a`, hours: 2 });
     courseTypes[5].tags.push({ id: `type6_b`, name: `多元選b`, hours: 2 });
 
-    // Type 7: 彈性1 ~ 彈性3 (3 tags), 1 hour
-    courseTypes[6].tags.push({ id: `type7_1`, name: `彈性1`, hours: 1 });
-    courseTypes[6].tags.push({ id: `type7_2`, name: `彈性2`, hours: 1 });
-    courseTypes[6].tags.push({ id: `type7_3`, name: `彈性3`, hours: 1 });
+    // Type 7: 彈性1 ~ 彈性3 (3 tags), 0 hours
+    courseTypes[6].tags.push({ id: `type7_1`, name: `彈性1`, hours: 0 });
+    courseTypes[6].tags.push({ id: `type7_2`, name: `彈性2`, hours: 0 });
+    courseTypes[6].tags.push({ id: `type7_3`, name: `彈性3`, hours: 0 });
 
     function renderCategory(category) {
         const categoryDiv = document.createElement('div');
