@@ -18,6 +18,14 @@ document.addEventListener('DOMContentLoaded', () => {
         { type: 7, title: '彈性', tags: [] }
     ];
 
+    let currentTypeIndex = 7;
+
+    const extraColors = ['#f368e0', '#ff9f43', '#ee5253', '#0abde3', '#10ac84', '#222f3e', '#5f27cd', '#ff6b6b', '#48dbfb', '#1dd1a1'];
+    function getNextColor() {
+        const index = (currentTypeIndex - 7) % extraColors.length;
+        return extraColors[index];
+    }
+
     // Initialize tags data
     // Type 1: 高一a ~ 高一h (8 tags), 2 hours
     const type1Letters = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
@@ -57,22 +65,45 @@ document.addEventListener('DOMContentLoaded', () => {
     courseTypes[6].tags.push({ id: `type7_2`, name: `彈性2`, hours: 1 });
     courseTypes[6].tags.push({ id: `type7_3`, name: `彈性3`, hours: 1 });
 
-    // Render Tags with Categories
-    courseTypes.forEach(category => {
+    function renderCategory(category) {
         const categoryDiv = document.createElement('div');
         categoryDiv.className = 'category-group';
         categoryDiv.id = `category-${category.type}`;
         
+        const headerDiv = document.createElement('div');
+        headerDiv.className = 'category-header';
+        
         const titleEl = document.createElement('h3');
         titleEl.textContent = category.title;
-        categoryDiv.appendChild(titleEl);
+        
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'btn-delete-category';
+        deleteBtn.innerHTML = '&times;';
+        deleteBtn.title = '刪除此課程';
+        deleteBtn.addEventListener('click', () => {
+            if (confirm(`確定要刪除「${category.title}」課程嗎？所有已分配的此課程標籤也會一併移除。`)) {
+                const allTags = document.querySelectorAll(`.course-tag[data-type="${category.type}"]`);
+                allTags.forEach(tag => tag.remove());
+                categoryDiv.remove();
+                updateAllRows();
+            }
+        });
+        
+        headerDiv.appendChild(titleEl);
+        headerDiv.appendChild(deleteBtn);
+        categoryDiv.appendChild(headerDiv);
 
         const tagsWrapper = document.createElement('div');
         tagsWrapper.className = 'category-tags-wrapper';
 
         category.tags.forEach((tag, index) => {
             const tagEl = document.createElement('div');
-            tagEl.className = `course-tag tag-type-${category.type}`;
+            tagEl.className = 'course-tag';
+            if (category.type <= 7) {
+                tagEl.classList.add(`tag-type-${category.type}`);
+            } else {
+                tagEl.style.backgroundColor = category.color;
+            }
             tagEl.draggable = true;
             tagEl.id = tag.id;
             tagEl.textContent = `${tag.name} (${tag.hours}h)`;
@@ -88,7 +119,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         categoryDiv.appendChild(tagsWrapper);
         tagsContainer.appendChild(categoryDiv);
-    });
+    }
+
+    // Initial Render
+    courseTypes.forEach(renderCategory);
 
     // Generate 10 table rows
     for (let i = 0; i < 10; i++) {
@@ -146,6 +180,58 @@ document.addEventListener('DOMContentLoaded', () => {
     tagsContainer.addEventListener('dragover', handleDragOver);
     tagsContainer.addEventListener('dragleave', handleDragLeave);
     tagsContainer.addEventListener('drop', handleDrop);
+
+    // Modal Logic
+    const modal = document.getElementById('add-course-modal');
+    const btnAddCourse = document.getElementById('add-course-btn');
+    const btnCancel = document.getElementById('cancel-add-btn');
+    const btnConfirm = document.getElementById('confirm-add-btn');
+
+    btnAddCourse.addEventListener('click', () => {
+        modal.style.display = 'flex';
+    });
+
+    btnCancel.addEventListener('click', () => {
+        modal.style.display = 'none';
+    });
+
+    btnConfirm.addEventListener('click', () => {
+        const nameInput = document.getElementById('new-course-name').value.trim();
+        const countInput = parseInt(document.getElementById('new-course-count').value, 10);
+        const hoursInput = parseInt(document.getElementById('new-course-hours').value, 10);
+
+        if (!nameInput || isNaN(countInput) || isNaN(hoursInput) || countInput < 1 || hoursInput < 1) {
+            alert('請填寫完整且正確的數值！');
+            return;
+        }
+
+        currentTypeIndex++;
+        const newCategory = {
+            type: currentTypeIndex,
+            title: nameInput,
+            color: getNextColor(),
+            tags: []
+        };
+
+        for (let i = 1; i <= countInput; i++) {
+            newCategory.tags.push({
+                id: `type${currentTypeIndex}_${i}`,
+                name: `${nameInput}${i}`, // E.g., 美術1, 美術2
+                hours: hoursInput
+            });
+        }
+
+        courseTypes.push(newCategory);
+        renderCategory(newCategory);
+        
+        modal.style.display = 'none';
+        
+        // Reset form
+        document.getElementById('new-course-name').value = '';
+        document.getElementById('new-course-count').value = '1';
+        document.getElementById('new-course-hours').value = '2';
+    });
+
 
     // Drag and Drop Handlers
     let draggedElement = null;
