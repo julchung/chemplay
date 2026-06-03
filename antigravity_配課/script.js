@@ -5,7 +5,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const roleRequirements = {
         '專任': 16,
         '導師': 12,
-        '課召': 16
+        '課召': 14
     };
 
     const courseTypes = [
@@ -125,16 +125,62 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initial Render
     courseTypes.forEach(renderCategory);
 
-    // Generate 10 table rows
-    for (let i = 0; i < 10; i++) {
+    // Predefined teachers
+    const defaultTeachers = [
+        { name: '淑如', role: '專任' },
+        { name: '麗菁', role: '專任' },
+        { name: '坤田', role: '專任' },
+        { name: '裕霖', role: '專任' },
+        { name: '佳容', role: '課召' },
+        { name: '綱庭', role: '導師' },
+        { name: '圓梅', role: '專任' },
+        { name: '兆雯', role: '專任' },
+        { name: '奇愛', role: '導師' }
+    ];
+
+    function createTeacherRow(teacher = { name: '', role: '專任' }) {
         const tr = document.createElement('tr');
         
+        // Col 0: Action (Delete)
+        const tdAction = document.createElement('td');
+        tdAction.style.textAlign = 'center';
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'btn-delete-row';
+        deleteBtn.innerHTML = '&times;';
+        deleteBtn.title = '刪除此教師';
+        deleteBtn.style.color = 'white';
+        deleteBtn.style.backgroundColor = '#ff6b6b';
+        deleteBtn.style.border = 'none';
+        deleteBtn.style.borderRadius = '4px';
+        deleteBtn.style.cursor = 'pointer';
+        deleteBtn.style.padding = '2px 8px';
+        deleteBtn.onclick = () => {
+            if (confirm('確定要刪除這位教師嗎？分配給他的課程將會退回待配區。')) {
+                const tags = Array.from(tr.querySelectorAll('.course-tag'));
+                tags.forEach(tag => {
+                    const type = tag.dataset.type;
+                    const categoryWrapper = document.querySelector(`#category-${type} .category-tags-wrapper`);
+                    if (categoryWrapper) {
+                        categoryWrapper.appendChild(tag);
+                        const sortedTags = Array.from(categoryWrapper.children).sort((a, b) => {
+                            return parseInt(a.dataset.originalIndex) - parseInt(b.dataset.originalIndex);
+                        });
+                        sortedTags.forEach(t => categoryWrapper.appendChild(t));
+                    }
+                });
+                tr.remove();
+                updateAllRows();
+            }
+        };
+        tdAction.appendChild(deleteBtn);
+
         // Col 1: Name
         const tdName = document.createElement('td');
         const inputName = document.createElement('input');
         inputName.type = 'text';
         inputName.className = 'name-input';
         inputName.placeholder = '輸入教師姓名...';
+        inputName.value = teacher.name;
         tdName.appendChild(inputName);
 
         // Col 2: Role
@@ -145,6 +191,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const option = document.createElement('option');
             option.value = role;
             option.textContent = role;
+            if (role === teacher.role) option.selected = true;
             selectRole.appendChild(option);
         });
         selectRole.addEventListener('change', () => updateRowStatus(tr));
@@ -166,15 +213,36 @@ document.addEventListener('DOMContentLoaded', () => {
         spanHours.textContent = '0';
         tdHours.appendChild(spanHours);
 
+        // Col 5: Overtime Hours (超鐘點數)
+        const tdOvertime = document.createElement('td');
+        const spanOvertime = document.createElement('span');
+        spanOvertime.className = 'hours-display';
+        spanOvertime.textContent = '0';
+        tdOvertime.appendChild(spanOvertime);
+
+        tr.appendChild(tdAction);
         tr.appendChild(tdName);
         tr.appendChild(tdRole);
         tr.appendChild(tdCourses);
         tr.appendChild(tdHours);
+        tr.appendChild(tdOvertime);
         
+        return tr;
+    }
+
+    defaultTeachers.forEach(teacher => {
+        const tr = createTeacherRow(teacher);
         tableBody.appendChild(tr);
-        
-        // Initial update
         updateRowStatus(tr);
+    });
+
+    const addTeacherBtn = document.getElementById('add-teacher-btn');
+    if (addTeacherBtn) {
+        addTeacherBtn.addEventListener('click', () => {
+            const tr = createTeacherRow();
+            tableBody.appendChild(tr);
+            updateRowStatus(tr);
+        });
     }
 
     // Set up main tags container as a dropzone too
@@ -300,7 +368,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function updateRowStatus(row) {
         const role = row.querySelector('.role-select').value;
-        const requiredHours = roleRequirements[role];
+        const requiredHours = roleRequirements[role] || 0;
         
         const tags = row.querySelectorAll('.course-tag');
         let totalHours = 0;
@@ -308,13 +376,20 @@ document.addEventListener('DOMContentLoaded', () => {
             totalHours += parseInt(tag.dataset.hours, 10);
         });
 
-        const hoursDisplay = row.querySelector('.hours-display');
+        const hoursDisplays = row.querySelectorAll('.hours-display');
+        const hoursDisplay = hoursDisplays[0];
+        const overtimeDisplay = hoursDisplays[1];
+
         hoursDisplay.textContent = totalHours;
+        const overtime = totalHours - requiredHours;
+        overtimeDisplay.textContent = overtime;
 
         if (totalHours < requiredHours) {
             hoursDisplay.className = 'hours-display hours-danger';
+            overtimeDisplay.className = 'hours-display hours-danger';
         } else {
             hoursDisplay.className = 'hours-display hours-success';
+            overtimeDisplay.className = 'hours-display hours-success';
         }
     }
 
@@ -322,4 +397,90 @@ document.addEventListener('DOMContentLoaded', () => {
         const rows = tableBody.querySelectorAll('tr');
         rows.forEach(row => updateRowStatus(row));
     }
+
+    // Save/Load/Print functionality
+    document.getElementById('save-btn').addEventListener('click', () => {
+        const rows = tableBody.querySelectorAll('tr');
+        const data = [];
+        rows.forEach(row => {
+            const name = row.querySelector('.name-input').value;
+            const role = row.querySelector('.role-select').value;
+            const tags = Array.from(row.querySelectorAll('.course-tag')).map(tag => tag.id);
+            data.push({ name, role, tags });
+        });
+        
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'schedule_data.json';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    });
+
+    const loadFileInput = document.getElementById('load-file-input');
+    if (loadFileInput) {
+        document.getElementById('load-btn').addEventListener('click', () => {
+            loadFileInput.click();
+        });
+
+        loadFileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                try {
+                    const data = JSON.parse(event.target.result);
+                    const rows = tableBody.querySelectorAll('tr');
+                    
+                    // First, return all tags from all rows back to tags container
+                    rows.forEach(row => {
+                        const tags = Array.from(row.querySelectorAll('.course-tag'));
+                        tags.forEach(tag => {
+                            const type = tag.dataset.type;
+                            const categoryWrapper = document.querySelector(`#category-${type} .category-tags-wrapper`);
+                            if (categoryWrapper) {
+                                categoryWrapper.appendChild(tag);
+                                // Sort tags back in order
+                                const sortedTags = Array.from(categoryWrapper.children).sort((a, b) => {
+                                    return parseInt(a.dataset.originalIndex) - parseInt(b.dataset.originalIndex);
+                                });
+                                sortedTags.forEach(t => categoryWrapper.appendChild(t));
+                            }
+                        });
+                    });
+
+                    // Clear existing rows
+                    tableBody.innerHTML = '';
+
+                    // Now apply saved data
+                    data.forEach((savedRow) => {
+                        const row = createTeacherRow({ name: savedRow.name, role: savedRow.role });
+                        const dropzone = row.querySelector('.course-dropzone');
+                        savedRow.tags.forEach(tagId => {
+                            const tagEl = document.getElementById(tagId);
+                            if (tagEl) {
+                                dropzone.appendChild(tagEl);
+                            }
+                        });
+                        tableBody.appendChild(row);
+                    });
+                    
+                    updateAllRows();
+                    alert('載入成功！');
+                } catch (err) {
+                    alert('檔案格式錯誤，無法載入。');
+                }
+                loadFileInput.value = ''; // Reset input to allow loading the same file again
+            };
+            reader.readAsText(file);
+        });
+    }
+
+    document.getElementById('print-btn').addEventListener('click', () => {
+        window.print();
+    });
 });

@@ -346,3 +346,51 @@ th {
     flex-wrap: wrap;
     gap: 10px;
 }
+
+@media print {
+    header,
+    .tags-section,
+    tfoot {
+        display: none !important;
+    }
+
+    .app-container {
+        padding: 0;
+        max-width: 100%;
+    }
+
+    .main-content {
+        display: block;
+    }
+
+    .table-section {
+        flex: none;
+        width: 100%;
+        box-shadow: none;
+        padding: 0;
+        margin: 0;
+    }
+
+    #schedule-table th:first-child,
+    #schedule-table td:first-child {
+        display: none !important;
+    }
+
+    .name-input, .role-select {
+        border: none !important;
+        background: transparent !important;
+        -webkit-appearance: none;
+        appearance: none;
+        padding: 0;
+        font-weight: bold;
+    }
+    
+    .course-dropzone {
+        border: 1px solid #ddd;
+    }
+
+    * {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+}
